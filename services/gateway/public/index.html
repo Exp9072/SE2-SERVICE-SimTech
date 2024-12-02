@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimTech Gateway</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        header .brand {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        header .login-btn {
+            background-color: white;
+            color: #017cff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        header .login-btn:hover {
+            background-color: #005bb5;
+            color: white;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        main h1 {
+            font-size: 36px;
+            color: #333;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">SimTech</div>
+        <a href="/login" class="login-btn">Login</a>
+    </header>
+    <main>
+        <h1>Welcome to SimTech Gateway</h1>
+    </main>
+    <footer>
+        <p>&copy; 2024 SimTech Kelompok X</p>
+    </footer>
+</body>
+</html>
