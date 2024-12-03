@@ -64,6 +64,8 @@
         nav {
             display: flex;
             gap: 15px;
+            margin-left: auto;
+            
         }
 
         nav a {
@@ -84,6 +86,8 @@
             position: relative;
             display: flex;
             align-items: center;
+            padding-left: 30px;
+            margin-right: 20px;
         }
 
         .profile-circle {
@@ -245,15 +249,12 @@
     <header>
         <div class="brand">SimTech</div>
         <nav>
+            <a href="#katalog" class="scroll-link">Katalog</a>
             <a href="#pc-ready" class="scroll-link">PC Ready</a>
-            <a href="#cpu" class="scroll-link">CPU</a>
-            <a href="#gpu" class="scroll-link">GPU</a>
-            <a href="#ram" class="scroll-link">RAM</a>
-            <a href="#motherboard" class="scroll-link">Motherboard</a>
-            <a href="#psu" class="scroll-link">PSU</a>
-            <a href="#cooling" class="scroll-link">Cooling</a>
-            <a href="#storage" class="scroll-link">Storage</a>
+            <a href="#simulasi" class="scroll-link">Simulasi</a>
+            <a href="#cart" class="scroll-link">Cart</a>
         </nav>
+        
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
             <div id="dropdown-menu" class="dropdown">
@@ -328,7 +329,6 @@
                             <li><strong>Sistem Operasi:</strong> Windows 11 Home</li>
                         </ul>
                     </div>
-                    
                 </div>
                 <div class="product-card">
                     <img src="images/pcready1.jpg" alt="Product 2">
@@ -346,51 +346,192 @@
                             <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
                         </ul>
                     </div>
-                    
+                </div>
+                <div class="product-card">
+                    <img src="images/pcready3.jpg" alt="Product 3">
+                    <div class="name">Paket Gaming Ultra</div>
+                    <div class="price">Rp 100.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                    <div class="description">
+                        <h4>Spesifikasi</h4>
+                        <ul>
+                            <li><strong>Prosesor:</strong> AMD Ryzen 9 7950X</li>
+                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 4080</li>
+                            <li><strong>RAM:</strong> 64GB DDR5</li>
+                            <li><strong>Storage:</strong> 2TB SSD NVMe</li>
+                            <li><strong>Power Supply:</strong> 1000W Platinum Certified</li>
+                            <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             <div id="cpu" class="products">
                 <h2>CPU</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk CPU -->
+                    <div class="product-card">
+                        <img src="images/cpu1.jpg" alt="CPU 1">
+                        <div class="name">Intel Core i7-12700K</div>
+                        <div class="price">Rp 5.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/cpu2.jpg" alt="CPU 2">
+                        <div class="name">AMD Ryzen 7 5800X3D</div>
+                        <div class="price">Rp 6.500.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/cpu3.jpg" alt="CPU 3">
+                        <div class="name">Intel Core i9-13900K</div>
+                        <div class="price">Rp 8.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+            
             <div id="gpu" class="products">
                 <h2>GPU</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk GPU -->
+                    <div class="product-card">
+                        <img src="images/gpu1.jpg" alt="GPU 1">
+                        <div class="name">NVIDIA GeForce RTX 3060 Ti</div>
+                        <div class="price">Rp 6.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/gpu2.jpg" alt="GPU 2">
+                        <div class="name">AMD Radeon RX 6800 XT</div>
+                        <div class="price">Rp 8.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/gpu3.jpg" alt="GPU 3">
+                        <div class="name">NVIDIA GeForce RTX 4090</div>
+                        <div class="price">Rp 30.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+
             <div id="ram" class="products">
                 <h2>RAM</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk RAM -->
+                    <div class="product-card">
+                        <img src="images/ram1.jpg" alt="RAM 1">
+                        <div class="name">Corsair Vengeance RGB Pro 16GB (2x8GB)</div>
+                        <div class="price">Rp 1.200.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/ram2.jpg" alt="RAM 2">
+                        <div class="name">G.Skill Trident Z RGB 32GB (2x16GB)</div>
+                        <div class="price">Rp 2.500.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/ram3.jpg" alt="RAM 3">
+                        <div class="name">Kingston Fury Beast 64GB (4x16GB)</div>
+                        <div class="price">Rp 4.800.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+            
             <div id="motherboard" class="products">
                 <h2>Motherboard</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk Motherboard -->
+                    <div class="product-card">
+                        <img src="images/motherboard1.jpg" alt="Motherboard 1">
+                        <div class="name">ASUS ROG STRIX Z690-E</div>
+                        <div class="price">Rp 6.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/motherboard2.jpg" alt="Motherboard 2">
+                        <div class="name">MSI MPG X570 Gaming Edge WiFi</div>
+                        <div class="price">Rp 4.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/motherboard3.jpg" alt="Motherboard 3">
+                        <div class="name">Gigabyte Z790 AORUS Master</div>
+                        <div class="price">Rp 7.500.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+            
             <div id="psu" class="products">
                 <h2>PSU</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk PSU -->
+                    <div class="product-card">
+                        <img src="images/psu1.jpg" alt="PSU 1">
+                        <div class="name">Corsair RM750x 750W 80+ Gold</div>
+                        <div class="price">Rp 1.800.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/psu2.jpg" alt="PSU 2">
+                        <div class="name">Seasonic PRIME 850W 80+ Platinum</div>
+                        <div class="price">Rp 3.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/psu3.jpg" alt="PSU 3">
+                        <div class="name">Cooler Master V1000 1000W 80+ Gold</div>
+                        <div class="price">Rp 2.500.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+            
             <div id="cooling" class="products">
                 <h2>Cooling</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk Cooling -->
+                    <div class="product-card">
+                        <img src="images/cooling1.jpg" alt="Cooling 1">
+                        <div class="name">Cooler Master Hyper 212 RGB</div>
+                        <div class="price">Rp 800.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/cooling2.jpg" alt="Cooling 2">
+                        <div class="name">NZXT Kraken X63 280mm AIO</div>
+                        <div class="price">Rp 3.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/cooling3.jpg" alt="Cooling 3">
+                        <div class="name">Noctua NH-D15 Chromax Black</div>
+                        <div class="price">Rp 2.000.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
             </div>
+            
             <div id="storage" class="products">
                 <h2>Storage</h2>
                 <div class="product-carousel">
-                    <!-- Isi produk Storage -->
+                    <div class="product-card">
+                        <img src="images/storage1.jpg" alt="Storage 1">
+                        <div class="name">Samsung 970 EVO Plus 1TB NVMe SSD</div>
+                        <div class="price">Rp 2.500.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/storage2.jpg" alt="Storage 2">
+                        <div class="name">Western Digital Black 2TB HDD</div>
+                        <div class="price">Rp 1.200.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
+                    <div class="product-card">
+                        <img src="images/storage3.jpg" alt="Storage 3">
+                        <div class="name">Seagate BarraCuda 4TB HDD</div>
+                        <div class="price">Rp 1.800.000</div>
+                        <button class="detail-btn">View Details</button>
+                    </div>
                 </div>
-            </div>
+            </div>        
         </div>
     </main>
     <footer>
