@@ -85,6 +85,12 @@ app.use('/auth/user', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/user',
 }));
 
+// Proxy untuk Login
+app.use('/login', proxy('http://localhost:3001', {
+    proxyReqPathResolver: () => '/login',
+}));
+
+
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

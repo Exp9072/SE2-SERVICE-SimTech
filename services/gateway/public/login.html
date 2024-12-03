@@ -77,6 +77,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     alert('Login successful!');
+                    sessionStorage.setItem('user', JSON.stringify(data.user)); // Simpan user ke sesi
                     window.location.href = '/'; // Redirect to homepage
                 } else {
                     alert('Login failed. Please check your credentials.');

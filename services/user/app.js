@@ -192,6 +192,33 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// Endpoint Login
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        if (rows.length === 0) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        const user = rows[0];
+
+        // Jika password tidak di-hash, langsung bandingkan
+        if (user.password !== password) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        // Login berhasil
+        req.session.userId = user.id; // Simpan sesi pengguna
+        res.json({ success: true, message: 'Login successful', user: { id: user.id, email: user.email, name: user.name } });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: 'An error occurred during login' });
+    }
+});
+
+
 
 // Jalankan User Service
 app.listen(3001, () => console.log('User service running on port 3001'));
