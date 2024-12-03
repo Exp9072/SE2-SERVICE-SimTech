@@ -95,6 +95,16 @@ app.use('/api/products', proxy('http://localhost:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
+// Proxy untuk Order Service
+app.use('/api/orders', proxy('http://localhost:3003', {
+    proxyReqPathResolver: (req) => req.originalUrl,
+}));
+
+// Proxy untuk Order Service
+app.use('/api/payments', proxy('http://localhost:3004', {
+    proxyReqPathResolver: (req) => req.originalUrl,
+}));
+
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));
