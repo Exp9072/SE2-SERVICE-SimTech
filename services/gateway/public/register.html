@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SimTech</title>
+    <title>Register - SimTech</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .back-btn {
@@ -27,9 +27,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Login to SimTech</h1>
-        <!-- Form Login -->
-        <form id="login-form">
+        <h1>Register to SimTech</h1>
+        <!-- Form Register -->
+        <form id="register-form">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
@@ -38,51 +42,39 @@
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn">Register</button>
         </form>
 
-        <!-- Divider -->
-        <div class="divider">
-            <span>or</span>
-        </div>
-
-        <!-- OAuth Buttons -->
-        <div class="oauth-buttons">
-            <a href="http://localhost:3000/auth/google" class="btn google-btn">Login with Google</a>
-            <a href="http://localhost:3000/auth/github" class="btn github-btn">Login with GitHub</a>
-            <p>Don't have an account? <a href="/register">Register here</a></p>
-        </div>
-
-        <!-- Back to Homepage -->
-        <a href="/" class="back-btn">Back to Homepage</a>
+        <!-- Back to Login -->
+        <a href="/login" class="back-btn">Back to Login</a>
     </div>
 
     <script>
-        // Form Login with Email and Password
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
             try {
-                const response = await fetch('http://localhost:3000/login', {
+                const response = await fetch('http://localhost:3000/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ name, email, password }),
                 });
 
                 if (response.ok) {
-                    const data = await response.json();
-                    alert('Login successful!');
-                    window.location.href = '/'; // Redirect to homepage
+                    alert('Registration successful!');
+                    window.location.href = '/login';
                 } else {
-                    alert('Login failed. Please check your credentials.');
+                    const error = await response.json();
+                    alert(`Registration failed: ${error.message}`);
                 }
-            } catch (error) {
-                console.error('Login error:', error);
+            } catch (err) {
+                console.error('Registration error:', err);
                 alert('An error occurred. Please try again.');
             }
         });

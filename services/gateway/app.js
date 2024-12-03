@@ -20,6 +20,23 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+
+// Proxy untuk Logout
+app.use('/logout', proxy('http://localhost:3001', {
+    proxyReqPathResolver: () => '/logout',
+}));
+
+// Proxy untuk Register
+app.use('/register', proxy('http://localhost:3001', {
+    proxyReqPathResolver: () => '/register',
+}));
+
+
+
 // Proxy untuk Google OAuth
 app.use('/auth/google', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google',
@@ -62,6 +79,10 @@ app.use('/auth/github/callback', proxy('http://localhost:3001', {
         }
         return proxyResData; // Pastikan data tetap diteruskan
     },
+}));
+
+app.use('/auth/user', proxy('http://localhost:3001', {
+    proxyReqPathResolver: () => '/auth/user',
 }));
 
 

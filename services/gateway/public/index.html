@@ -13,40 +13,78 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            background-color: #f4f4f9;
         }
 
         header {
-            width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 20px;
             background-color: #017cff;
             color: white;
-            position: fixed;
+            position: sticky;
             top: 0;
             left: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        header .brand {
+        .brand {
             font-size: 24px;
             font-weight: bold;
         }
 
-        header .login-btn {
-            background-color: white;
-            color: #017cff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            text-decoration: none;
+        .user-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
-        header .login-btn:hover {
-            background-color: #005bb5;
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.2s ease;
+        }
+
+        .profile-circle:hover {
+            transform: scale(1.1);
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .dropdown.active {
+            display: block;
+        }
+
+        .dropdown button {
+            background-color: #017cff;
             color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .dropdown button:hover {
+            background-color: #005bb5;
         }
 
         main {
@@ -74,13 +112,65 @@
 <body>
     <header>
         <div class="brand">SimTech</div>
-        <a href="/login" class="login-btn">Login</a>
+        <div class="user-menu">
+            <img id="profile-picture" class="profile-circle" src="default-profile.png" alt="Profile">
+            <div id="dropdown-menu" class="dropdown">
+                <button id="login-btn" style="display: none;">Login</button>
+                <button id="logout-btn" style="display: none;">Logout</button>
+            </div>
+        </div>
     </header>
     <main>
-        <h1>Welcome to SimTech Gateway</h1>
+        <div class="container">
+            <h1>Welcome to SimTech Gateway</h1>
+            <p>Your gateway to all SimTech services.</p>
+        </div>
     </main>
     <footer>
-        <p>&copy; 2024 SimTech Kelompok X</p>
+        <p>&copy; 2024 SimTech</p>
     </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const profilePicture = document.getElementById('profile-picture');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            try {
+                const response = await fetch('/auth/user');
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    profilePicture.src = data.user.profilePicture || 'default-profile.png';
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'block';
+                } else {
+                    profilePicture.src = 'default-profile.png';
+                    loginBtn.style.display = 'block';
+                    logoutBtn.style.display = 'none';
+                }
+
+                profilePicture.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('active');
+                });
+
+                loginBtn.addEventListener('click', () => {
+                    window.location.href = '/login';
+                });
+
+                logoutBtn.addEventListener('click', async () => {
+                    await fetch('/logout', { method: 'POST' });
+                    window.location.href = '/'; // Redirect ke homepage
+                });
+
+                document.addEventListener('click', () => {
+                    dropdownMenu.classList.remove('active');
+                });
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        });
+    </script>
 </body>
 </html>
