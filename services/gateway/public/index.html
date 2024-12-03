@@ -12,7 +12,7 @@
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100%;
+            min-height: fit-content;
             background-color: #f4f4f9;
             overflow-x: hidden; /* Menghindari scroll horizontal */
         }
@@ -27,7 +27,7 @@
             padding: 0;
             margin: 0;
             width: 100%;
-            min-height: 100vh; /* Pastikan setinggi viewport */
+            min-height: fit-content; /* Pastikan setinggi viewport */
             padding-bottom: 50px; /* Ruang ekstra di bawah */
         }
 
@@ -37,7 +37,7 @@
             padding: 10px;
             background-color: #f0f0f0;
             color: #666;
-            margin-top: auto; /* Menempel ke bawah */
+            margin-bottom: auto; /* Menempel ke bawah */
         }
 
         header {
@@ -47,7 +47,7 @@
             padding: 10px 20px;
             background-color: #017cff;
             color: white;
-            position: sticky;
+            position: sticky; 
             top: 0;
             left: 0;
             width: 100%;
@@ -135,7 +135,7 @@
         position: relative;
         width: 100%;
         margin : auto;
-        overflow: hidden; /* Hanya menampilkan satu slide pada satu waktu */
+        overflow: visible; /* Hanya menampilkan satu slide pada satu waktu */
         }
 
         .slider-container {
