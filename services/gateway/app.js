@@ -90,6 +90,10 @@ app.use('/login', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/login',
 }));
 
+// Proxy untuk Product Service
+app.use('/api/products', proxy('http://localhost:3002', {
+    proxyReqPathResolver: (req) => req.originalUrl,
+}));
 
 
 // Jalankan Gateway

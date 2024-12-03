@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keranjang Belanja</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .cart-items {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .cart-item .name {
+            font-weight: bold;
+        }
+
+        .checkout-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .checkout-btn:hover {
+            background-color: #005bb5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Keranjang Belanja</h1>
+    <div class="cart-items"></div>
+    <button class="checkout-btn">Checkout</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cartItemsContainer = document.querySelector('.cart-items');
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
+            } else {
+                cart.forEach((item, index) => {
+                    const cartItem = document.createElement('div');
+                    cartItem.classList.add('cart-item');
+                    cartItem.innerHTML = `
+                        <span class="name">${item}</span>
+                        <button class="remove-btn" data-index="${index}">Hapus</button>
+                    `;
+                    cartItemsContainer.appendChild(cartItem);
+                });
+            }
+
+            document.querySelectorAll('.remove-btn').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    const index = event.target.getAttribute('data-index');
+                    cart.splice(index, 1);
+                    localStorage.setItem('cart', JSON.stringify(cart));
+                    window.location.reload();
+                });
+            });
+
+            document.querySelector('.checkout-btn').addEventListener('click', () => {
+                alert('Fitur checkout belum tersedia.');
+            });
+        });
+    </script>
+</body>
+</html>
