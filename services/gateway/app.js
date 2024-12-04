@@ -8,10 +8,13 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const app = express();
 app.use(morgan('dev'));
 
+// Sajikan file statis
+app.use(express.static(path.join(__dirname, 'public')));
+
 // **1. Rate Limiter Global**
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 300, // Maksimal 300 permintaan per IP dalam 15 menit
+    max: 1000, // Maksimal 300 permintaan per IP dalam 15 menit
     message: {
         status: 429,
         message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.',
@@ -19,9 +22,6 @@ const globalLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
-
-// Terapkan Rate Limiter Global untuk semua rute
-app.use(globalLimiter);
 
 // **2. Throttle per IP**
 const throttle = (delay) => {
@@ -36,7 +36,6 @@ const throttle = (delay) => {
                 message: 'Terlalu banyak permintaan dalam waktu singkat. Silakan coba lagi.',
             });
         }
-
         requestTimes[clientIp] = now; // Perbarui waktu terakhir untuk IP ini
         next();
     };
@@ -45,11 +44,25 @@ const throttle = (delay) => {
 // Middleware untuk throttle per IP
 const ipThrottle = throttle(600); // Batasan per IP (600ms antar permintaan)
 
-// **Gunakan Middleware Global + Throttle IP untuk Semua Endpoint**
-app.use(ipThrottle);
+// **3. Throttle product**
+const productThrottle = throttle(100); // Batasan lebih longgar untuk produk
+const productLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 2000, // Maksimal 2000 permintaan per IP dalam 15 menit
+    message: {
+        status: 429,
+        message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
-// Sajikan file statis
-app.use(express.static(path.join(__dirname, 'public')));
+// Middleware global hanya untuk API tertentu
+app.use(['/auth', '/api/orders', '/api/payments'], globalLimiter);
+app.use(['/auth', '/api/orders', '/api/payments'], ipThrottle);
+
+// Middleware khusus untuk rute produk
+app.use('/api/products', productLimiter, productThrottle);
 
 // Rute utama untuk Gateway
 app.get('/', (req, res) => {
