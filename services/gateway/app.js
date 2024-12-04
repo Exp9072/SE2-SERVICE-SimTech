@@ -72,21 +72,21 @@ app.get('/register', (req, res) => {
 });
 
 // Proxy untuk Logout
-app.use(throttle(500), '/logout', proxy('http://localhost:3001', {
+app.use( '/logout', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/logout',
 }));
 
 // Proxy untuk Register
-app.use(throttle(500),'/register', proxy('http://localhost:3001', {
+app.use('/register', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/register',
 }));
 
 // Proxy untuk Google OAuth
-app.use(throttle(500),'/auth/google', proxy('http://localhost:3001', {
+app.use('/auth/google', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google',
 }));
 
-app.use(throttle(500),'/auth/google/callback', proxy('http://localhost:3001', {
+app.use('/auth/google/callback', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying Google OAuth callback response:', proxyRes.statusCode);
@@ -105,11 +105,11 @@ app.use(throttle(500),'/auth/google/callback', proxy('http://localhost:3001', {
 
 
 // Proxy untuk GitHub OAuth
-app.use(throttle(500),'/auth/github', proxy('http://localhost:3001', {
+app.use('/auth/github', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github',
 }));
 
-app.use(throttle(500),'/auth/github/callback', proxy('http://localhost:3001', {
+app.use('/auth/github/callback', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying GitHub OAuth callback response:', proxyRes.statusCode);
@@ -125,22 +125,22 @@ app.use(throttle(500),'/auth/github/callback', proxy('http://localhost:3001', {
     },
 }));
 
-app.use(throttle(500),'/auth/user', proxy('http://localhost:3001', {
+app.use('/auth/user', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/user',
 }));
 
 // Proxy untuk Login
-app.use(throttle(500),'/login', proxy('http://localhost:3001', {
+app.use('/login', throttle(500), proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/login',
 }));
 
 // Proxy untuk Product Service
-app.use(throttle(500),'/api/products', proxy('http://localhost:3002', {
+app.use('/api/products', throttle(500), proxy('http://localhost:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
 // Proxy untuk Order Service
-app.use(throttle(500),'/api/orders', proxy('http://localhost:3003', {
+app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
@@ -153,7 +153,7 @@ app.use(throttle(500),'/api/orders', proxy('http://localhost:3003', {
 }));
 
 // Proxy untuk Payment Service
-app.use(throttle(500), '/api/payments', proxy('http://localhost:3004', {
+app.use('/api/payments', throttle(500), proxy('http://localhost:3004', {
     proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
@@ -166,7 +166,7 @@ app.use(throttle(500), '/api/payments', proxy('http://localhost:3004', {
 }));
 
 
-app.use(throttle(500),'/api/orders', proxy('http://localhost:3003', {
+app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => {
         return req.originalUrl;
     },
