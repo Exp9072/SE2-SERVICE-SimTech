@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f4f4f9;
         }
         header {
@@ -26,14 +26,22 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        header .brand {
+        .brand {
             font-size: 24px;
             font-weight: bold;
+            color: white;
+            text-decoration: none;
         }
 
-        header nav {
+        header .brand:hover {
+            text-decoration: underline; /* Efek hover opsional */
+        }
+
+        nav {
             display: flex;
             gap: 15px;
+            margin-left: auto;
+            
         }
 
         header nav a {
@@ -89,7 +97,7 @@
             font-weight: bold;
         }
 
-        .checkout-btn, .back-btn {
+        .checkout-btn {
             display: block;
             margin: 10px auto;
             padding: 10px 20px;
@@ -101,8 +109,16 @@
             text-align: center;
         }
 
-        .checkout-btn:hover, .back-btn:hover {
+        .checkout-btn:hover {
             background-color: #005bb5;
+        }
+
+        .user-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            margin-right: 20px;
         }
 
         footer {
@@ -116,9 +132,8 @@
 </head>
 <body>
     <header>
-        <div class="brand">SimTech</div>
+        <a href="/" class="brand">SimTech</a>
         <nav>
-            <a href="/">Homepage</a>
             <a href="#katalog">Katalog</a>
             <a href="#pc-ready">PC Ready</a>
             <a href="#simulasi">Simulasi</a>
@@ -130,11 +145,9 @@
     <h1>Keranjang Belanja</h1>
     <div class="cart-items"></div>
     <button class="checkout-btn">Checkout</button>
-    <button class="back-btn" onclick="window.location.href='/'">Back to Homepage</button>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const cartItemsContainer = document.querySelector('.cart-items');
@@ -146,8 +159,12 @@
                 cart.forEach((item, index) => {
                     const cartItem = document.createElement('div');
                     cartItem.classList.add('cart-item');
+                    const price = item.price ? `Rp ${item.price.toLocaleString()}` : 'Tidak tersedia';
                     cartItem.innerHTML = `
-                        <span class="name">${item}</span>
+                        <div>
+                            <span class="name">${item.name}</span><br>
+                            <span class="price">Harga: ${price}</span>
+                        </div>
                         <button class="remove-btn" data-index="${index}">Hapus</button>
                     `;
                     cartItemsContainer.appendChild(cartItem);

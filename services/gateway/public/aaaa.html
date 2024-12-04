@@ -1,120 +1,179 @@
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        const profilePicture = document.getElementById('profile-picture');
-        const dropdownMenu = document.getElementById('dropdown-menu');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const productCarousel = document.querySelector('#pc-ready .product-carousel');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keranjang Belanja</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            position: sticky; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
 
-        let isLoggedIn = false;
+        header .brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
 
-        // Fungsi untuk memuat produk dari API berdasarkan tipe "PC Ready"
-        const loadProducts = async () => {
-            try {
-                const response = await fetch('/api/products'); // Panggil endpoint API produk
-                const products = await response.json();
+        header .brand:hover {
+            text-decoration: underline; /* Efek hover opsional */
+        }
 
-                // Filter produk untuk hanya mengambil item_type = "PC Ready"
-                const pcReadyProducts = products.filter(product => product.item_type === 'PC Ready');
+        header nav {
+            display: flex;
+            gap: 15px;
+        }
 
-                if (pcReadyProducts.length === 0) {
-                    productCarousel.innerHTML = '<p>Tidak ada produk PC Ready tersedia.</p>';
-                    return;
-                }
+        header nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
 
-                productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
+        header nav a:hover {
+            background-color: #005bb5;
+        }
 
-                // Tambahkan produk ke elemen HTML
-                pcReadyProducts.forEach((product) => {
-                    const productCard = document.createElement('div');
-                    productCard.classList.add('product-card');
+        header .user-menu {
+            display: flex;
+            align-items: center;
+        }
 
-                    productCard.innerHTML = `
-                        <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
-                        <div class="name">${product.item_name}</div>
-                        <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
-                        <button class="detail-btn" data-id="${product.item_id}">View Details</button>
-                        <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}">Beli</button>
-                    `;
+        header .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            margin-left: 15px;
+            cursor: pointer;
+        }
 
-                    productCarousel.appendChild(productCard);
-                });
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
 
-                // Event listener untuk tombol beli
-                document.querySelectorAll('.buy-btn').forEach((button) => {
-                    button.addEventListener('click', (e) => {
-                        const productId = button.dataset.id;
-                        const productName = button.dataset.name;
+        .cart-items {
+            margin: 20px auto;
+            max-width: 800px;
+        }
 
-                        if (!isLoggedIn) {
-                            alert('Silakan login terlebih dahulu untuk membeli barang.');
-                            window.location.href = '/login';
-                        } else {
-                            addToCart(productId, productName);
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error('Error loading products:', error);
-                productCarousel.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
-            }
-        };
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
 
-        // Fungsi untuk menambahkan produk ke keranjang
-        const addToCart = (productId, productName) => {
+        .cart-item .name {
+            font-weight: bold;
+        }
+
+        .checkout-btn {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .checkout-btn:hover {
+            background-color: #005bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="brand">SimTech</a>
+        <nav>
+            <a href="#katalog">Katalog</a>
+            <a href="#pc-ready">PC Ready</a>
+            <a href="#simulasi">Simulasi</a>
+        </nav>
+        <div class="user-menu">
+            <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
+        </div>
+    </header>
+    <h1>Keranjang Belanja</h1>
+    <div class="cart-items"></div>
+    <button class="checkout-btn">Checkout</button>
+    <footer>
+        <p>&copy; 2024 SimTech</p>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cartItemsContainer = document.querySelector('.cart-items');
             const cart = JSON.parse(localStorage.getItem('cart')) || [];
-            cart.push({ productId, productName });
-            localStorage.setItem('cart', JSON.stringify(cart));
-            alert(`${productName} berhasil ditambahkan ke keranjang!`);
-            window.location.href = 'cart.html';
-        };
 
-        // Periksa apakah pengguna telah login
-        try {
-            const response = await fetch('/auth/user');
-            const data = await response.json();
-            isLoggedIn = data.success && data.user;
-        } catch (err) {
-            console.error('Error checking login status:', err);
-        }
-
-        // Muat produk untuk PC Ready
-        await loadProducts();
-
-        // User Profile and Dropdown Logic
-        try {
-            const response = await fetch('/auth/user');
-            const data = await response.json();
-
-            if (data.success && data.user) {
-                profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
-                loginBtn.style.display = 'none';
-                logoutBtn.style.display = 'block';
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
             } else {
-                profilePicture.src = 'images/default-profile.png';
-                loginBtn.style.display = 'block';
-                logoutBtn.style.display = 'none';
+                cart.forEach((item, index) => {
+                    const cartItem = document.createElement('div');
+                    cartItem.classList.add('cart-item');
+                    const price = item.price ? `Rp ${item.price.toLocaleString()}` : 'Tidak tersedia';
+                    cartItem.innerHTML = `
+                        <div>
+                            <span class="name">${item.name}</span><br>
+                            <span class="price">Harga: ${price}</span>
+                        </div>
+                        <button class="remove-btn" data-index="${index}">Hapus</button>
+                    `;
+                    cartItemsContainer.appendChild(cartItem);
+                });
             }
 
-            profilePicture.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdownMenu.classList.toggle('active');
+            document.querySelectorAll('.remove-btn').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    const index = event.target.getAttribute('data-index');
+                    cart.splice(index, 1);
+                    localStorage.setItem('cart', JSON.stringify(cart));
+                    window.location.reload();
+                });
             });
 
-            loginBtn.addEventListener('click', () => {
-                window.location.href = '/login';
+            document.querySelector('.checkout-btn').addEventListener('click', () => {
+                alert('Fitur checkout belum tersedia.');
             });
-
-            logoutBtn.addEventListener('click', async () => {
-                await fetch('/logout', { method: 'POST' });
-                window.location.href = '/'; // Redirect ke homepage
-            });
-
-            document.addEventListener('click', () => {
-                dropdownMenu.classList.remove('active');
-            });
-        } catch (err) {
-            console.error('Error:', err);
-        }
-    });
-</script>
+        });
+    </script>
+</body>
+</html>

@@ -249,12 +249,11 @@
     <header>
         <div class="brand">SimTech</div>
         <nav>
-            <a href="#katalog" class="scroll-link">Katalog</a>
-            <a href="#pc-ready" class="scroll-link">PC Ready</a>
-            <a href="#simulasi" class="scroll-link">Simulasi</a>
-            <a href="#cart" class="scroll-link">Cart</a>
-        </nav>
-        
+            <a href="/katalog.html" class="nav-link" data-require-login="false">Katalog</a>
+            <a href="/pc-ready.html" class="nav-link" data-require-login="false">PC Ready</a>
+            <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
+            <a href="/cart.html" class="nav-link" data-require-login="true">Cart</a>
+        </nav>   
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
             <div id="dropdown-menu" class="dropdown">
@@ -545,26 +544,26 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const productCarousel = document.querySelector('#pc-ready .product-carousel');
-    
+        
             let isLoggedIn = false;
-    
+        
             // Slider Logic 
             const sliderContainer = document.querySelector('.slider-container');
             const slides = document.querySelectorAll('.slider-container img');
             const totalSlides = slides.length;
-    
+        
             let currentIndex = 0;
-    
+        
             const updateSliderPosition = () => {
                 const offset = currentIndex * -100; // Perpindahan dalam persen
                 sliderContainer.style.transform = `translateX(${offset}%)`;
             };
-    
+        
             const nextSlide = () => {
                 currentIndex = (currentIndex + 1) % totalSlides; // Kembali ke slide pertama setelah terakhir
                 updateSliderPosition();
             };
-    
+        
             // Scroll otomatis ke bagian terkait
             document.querySelectorAll('.category').forEach(category => {
                 category.addEventListener('click', function () {
@@ -581,7 +580,7 @@
                     }
                 });
             });
-    
+        
             // Scroll otomatis untuk nav-link
             document.querySelectorAll('.scroll-link').forEach(link => {
                 link.addEventListener('click', function (e) {
@@ -595,50 +594,53 @@
                     }
                 });
             });
-    
+        
             // Fungsi untuk memuat produk dari API berdasarkan tipe "PC Ready"
             const loadProducts = async () => {
                 try {
                     const response = await fetch('/api/products'); // Panggil endpoint API produk
                     const products = await response.json();
-
+    
                     // Filter produk untuk hanya mengambil item_type = "PC Ready"
                     const pcReadyProducts = products.filter(product => product.item_type === 'PC Ready');
-
+    
                     if (pcReadyProducts.length === 0) {
                         productCarousel.innerHTML = '<p>Tidak ada produk PC Ready tersedia.</p>';
                         return;
                     }
-
+    
                     productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
-
+    
                     // Tambahkan produk ke elemen HTML
                     pcReadyProducts.forEach((product) => {
                         const productCard = document.createElement('div');
                         productCard.classList.add('product-card');
-
+    
                         productCard.innerHTML = `
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
                             <div class="name">${product.item_name}</div>
                             <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
                             <button class="detail-btn" data-id="${product.item_id}">View Details</button>
-                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}">Beli</button>
+                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">
+                                Beli
+                            </button>
                         `;
-
+    
                         productCarousel.appendChild(productCard);
                     });
-
+    
                     // Event listener untuk tombol beli
                     document.querySelectorAll('.buy-btn').forEach((button) => {
                         button.addEventListener('click', (e) => {
                             const productId = button.dataset.id;
                             const productName = button.dataset.name;
-
+                            const productPrice = parseFloat(button.dataset.price);
+    
                             if (!isLoggedIn) {
                                 alert('Silakan login terlebih dahulu untuk membeli barang.');
                                 window.location.href = '/login';
                             } else {
-                                addToCart(productId, productName);
+                                addToCart(productId, productName, productPrice);
                             }
                         });
                     });
@@ -649,14 +651,14 @@
             };
         
             // Fungsi untuk menambahkan produk ke keranjang
-            const addToCart = (productId, productName) => {
+            const addToCart = (productId, productName, productPrice) => {
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                cart.push({ productId, productName });
+                cart.push({ id: productId, name: productName, price: productPrice });
                 localStorage.setItem('cart', JSON.stringify(cart));
                 alert(`${productName} berhasil ditambahkan ke keranjang!`);
                 window.location.href = 'cart.html';
             };
-    
+        
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');
@@ -665,18 +667,18 @@
             } catch (err) {
                 console.error('Error checking login status:', err);
             }
-    
+        
             // Muat produk
             await loadProducts();
-    
+        
             // Timer untuk mengganti slide setiap 5 detik
             setInterval(nextSlide, 5000);
-    
+        
             // User Profile and Dropdown Logic
             try {
                 const response = await fetch('/auth/user');
                 const data = await response.json();
-    
+        
                 if (data.success && data.user) {
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
                     loginBtn.style.display = 'none';
@@ -686,21 +688,21 @@
                     loginBtn.style.display = 'block';
                     logoutBtn.style.display = 'none';
                 }
-    
+        
                 profilePicture.addEventListener('click', (e) => {
                     e.stopPropagation();
                     dropdownMenu.classList.toggle('active');
                 });
-    
+        
                 loginBtn.addEventListener('click', () => {
                     window.location.href = '/login';
                 });
-    
+        
                 logoutBtn.addEventListener('click', async () => {
                     await fetch('/logout', { method: 'POST' });
                     window.location.href = '/'; // Redirect ke homepage
                 });
-    
+        
                 document.addEventListener('click', () => {
                     dropdownMenu.classList.remove('active');
                 });
