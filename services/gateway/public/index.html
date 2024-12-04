@@ -243,6 +243,43 @@
         .product-card {
             position: relative; /* Menjadikan posisi referensi untuk .description */
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal h2 {
+            margin: 0 0 10px;
+        }
+
+        .modal .close-btn {
+            background-color: #017cff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .modal .close-btn:hover {
+            background-color: #005bb5;
+        }
     </style>
 </head>
 <body>
@@ -309,6 +346,12 @@
                 <span>Storage</span>
             </div>
         </div>
+        <div class="modal" id="cart-modal">
+            <h2>Produk Ditambahkan</h2>
+            <div id="cart-modal-content"></div>
+            <button class="close-btn">Tutup</button>
+        </div>
+        
         <!-- Products -->
         <div id="pc-ready" class="products">
             <h2>PC Ready</h2>
@@ -546,7 +589,9 @@
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
             const productCarousel = document.querySelector('#pc-ready .product-carousel');
-    
+            const cartModal = document.getElementById('cart-modal');
+            const cartModalContent = document.getElementById('cart-modal-content');
+            const closeModalButton = cartModal.querySelector('.close-btn');
             let isLoggedIn = false;
     
             // Slider Logic 
@@ -555,6 +600,18 @@
             const totalSlides = slides.length;
     
             let currentIndex = 0;
+
+            // Fungsi untuk menampilkan modal
+            function showCartModal(productName) {
+                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
+                cartModal.classList.add('active');
+            }
+
+            // Fungsi untuk menutup modal
+            closeModalButton.addEventListener('click', () => {
+                cartModal.classList.remove('active');
+            });
+
     
             const updateSliderPosition = () => {
                 const offset = currentIndex * -100; // Perpindahan dalam persen
@@ -652,7 +709,7 @@
                 }
             };
 
-            // Fungsi untuk menambahkan produk ke keranjang
+            // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
                 cart.push({
@@ -662,9 +719,24 @@
                     quantity: 1, // Default quantity untuk setiap item
                 });
                 localStorage.setItem('cart', JSON.stringify(cart));
-                alert(`${productName} berhasil ditambahkan ke keranjang!`);
-                // window.location.href = '/cart';
+
+                // Menampilkan modal setelah item ditambahkan ke keranjang
+                const cartModal = document.getElementById('cart-modal');
+                const cartModalContent = document.getElementById('cart-modal-content');
+
+                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
+                cartModal.classList.add('active');
             };
+
+            // Fungsi untuk menutup modal
+            document.addEventListener('DOMContentLoaded', () => {
+                const cartModal = document.getElementById('cart-modal');
+                const closeModalButton = cartModal.querySelector('.close-btn');
+
+                closeModalButton.addEventListener('click', () => {
+                    cartModal.classList.remove('active');
+                });
+            });
 
 
     

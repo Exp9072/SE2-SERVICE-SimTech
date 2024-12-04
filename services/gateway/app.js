@@ -28,6 +28,11 @@ app.get('/cart', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'cart.html'));
 });
 
+app.get('/payment', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pembayaran.html'));
+});
+
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -139,7 +144,18 @@ app.use('/api/payments', proxy('http://localhost:3004', {
     },
 }));
 
-
+app.use('/api/orders', proxy('http://localhost:3003', {
+    proxyReqPathResolver: (req) => {
+        return req.originalUrl;
+    },
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];
+        if (userId) {
+            proxyReqOpts.headers['user-id'] = userId;
+        }
+        return proxyReqOpts;
+    },
+}));
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

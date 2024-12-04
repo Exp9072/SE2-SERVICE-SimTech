@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keranjang Belanja</title>
+    <title>Daftar Pesanan</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f4f4f9;
         }
+
         header {
             display: flex;
             justify-content: space-between;
@@ -26,22 +27,24 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        header .brand {
+        .brand {
             font-size: 24px;
             font-weight: bold;
             color: white;
             text-decoration: none;
+            padding-left: 30px;
         }
-
+        
         header .brand:hover {
-            text-decoration: underline; /* Efek hover opsional */
+            text-decoration: underline;
         }
-
-        header nav {
+        
+        nav {
             display: flex;
             gap: 15px;
+            margin-left: auto;
         }
-
+        
         header nav a {
             color: white;
             text-decoration: none;
@@ -50,16 +53,16 @@
             border-radius: 5px;
             transition: background-color 0.2s;
         }
-
+        
         header nav a:hover {
             background-color: #005bb5;
         }
-
+        
         header .user-menu {
             display: flex;
             align-items: center;
         }
-
+        
         header .profile-circle {
             width: 40px;
             height: 40px;
@@ -69,46 +72,58 @@
             margin-left: 15px;
             cursor: pointer;
         }
-
+        
         h1 {
+            margin: 20px 0;
             text-align: center;
-            margin-top: 20px;
         }
 
-        .cart-items {
-            margin: 20px auto;
+        .orders {
             max-width: 800px;
+            margin: 0 auto;
         }
 
-        .cart-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .order-item {
             background-color: white;
-            padding: 10px;
+            padding: 15px;
             margin-bottom: 10px;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        .cart-item .name {
-            font-weight: bold;
+        .order-item strong {
+            display: block;
         }
 
-        .checkout-btn {
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            border-radius: 8px;
+        }
+
+        .modal.active {
             display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
-            background-color: #017cff;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+        }
+
+        .modal .close-btn {
+            background-color: #f44336;
             color: white;
+            padding: 5px 10px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            text-align: center;
-        }
-
-        .checkout-btn:hover {
-            background-color: #005bb5;
         }
 
         footer {
@@ -130,49 +145,132 @@
         </nav>
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
+            <div id="dropdown-menu" class="dropdown">
+                <button id="login-btn" style="display: none;">Login</button>
+                <button id="logout-btn" style="display: none;">Logout</button>
+                <button id="order-btn" style="display: none;">Order</button>
+            </div>
         </div>
     </header>
-    <h1>Keranjang Belanja</h1>
-    <div class="cart-items"></div>
-    <button class="checkout-btn">Checkout</button>
+    <h1>Daftar Pesanan</h1>
+    <div class="orders"></div>
+
+    <!-- Modal for Order Details -->
+    <div class="modal" id="order-detail-modal">
+        <h2>Detail Barang</h2>
+        <div id="order-detail-content"></div>
+        <button class="close-btn">Tutup</button>
+    </div>
+
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const cartItemsContainer = document.querySelector('.cart-items');
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-            if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
-            } else {
-                cart.forEach((item, index) => {
-                    const cartItem = document.createElement('div');
-                    cartItem.classList.add('cart-item');
-                    const price = item.price ? `Rp ${item.price.toLocaleString()}` : 'Tidak tersedia';
-                    cartItem.innerHTML = `
-                        <div>
-                            <span class="name">${item.name}</span><br>
-                            <span class="price">Harga: ${price}</span>
-                        </div>
-                        <button class="remove-btn" data-index="${index}">Hapus</button>
-                    `;
-                    cartItemsContainer.appendChild(cartItem);
-                });
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ordersContainer = document.querySelector('.orders');
+            const modal = document.getElementById('order-detail-modal');
+            const modalContent = document.getElementById('order-detail-content');
+            const closeModalButton = modal.querySelector('.close-btn');
+            const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+
+            if (!userId) {
+                alert('Silakan login terlebih dahulu.');
+                window.location.href = '/login';
+                return;
             }
 
-            document.querySelectorAll('.remove-btn').forEach((button) => {
-                button.addEventListener('click', (event) => {
-                    const index = event.target.getAttribute('data-index');
-                    cart.splice(index, 1);
-                    localStorage.setItem('cart', JSON.stringify(cart));
-                    window.location.reload();
+            // Load orders
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': userId,
+                    },
                 });
+
+                const orders = await response.json();
+                if (response.ok && orders.length > 0) {
+                    ordersContainer.innerHTML = orders.map(order => `
+                        <div class="order-item">
+                            <strong>Nomor Pesanan: ${order.order_id}</strong>
+                            <p>Total Harga: Rp ${order.total_price.toLocaleString('id-ID')}</p>
+                            <p>Pembayaran: ${order.payment === 'unpaid' ? 'Belum Dibayar' : 'Sudah Dibayar'}</p>
+                            <p>Status: ${order.status}</p>
+                            <p>Tanggal: ${new Date(order.order_date).toLocaleString('id-ID')}</p>
+                            <button class="detail-btn" data-order-id="${order.order_id}">Lihat Detail Barang</button>
+                            ${order.payment === 'unpaid' ? `
+                                <button class="pay-btn" data-order-id="${order.order_id}">
+                                    Bayar
+                                </button>` : `<p style="color: green;">Pesanan sudah dibayar.</p>`}
+                        </div>
+                    `).join('');
+                } else {
+                    ordersContainer.innerHTML = '<p>Belum ada pesanan.</p>';
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+                ordersContainer.innerHTML = '<p>Gagal memuat pesanan. Silakan coba lagi nanti.</p>';
+            }
+
+            // Event listener for Detail Barang button
+            document.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('detail-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+
+                    try {
+                        const response = await fetch(`/api/orders/${orderId}/items`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'user-id': userId,
+                            },
+                        });
+
+                        const items = await response.json();
+                        if (response.ok && items.length > 0) {
+                            modalContent.innerHTML = items.map(item => `
+                                <p><strong>${item.name}</strong>: ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')}</p>
+                            `).join('');
+                            modal.classList.add('active');
+                        } else {
+                            modalContent.innerHTML = '<p>Detail barang tidak ditemukan.</p>';
+                            modal.classList.add('active');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching order items:', error);
+                        alert('Gagal memuat detail barang.');
+                    }
+                }
+
+                if (e.target.classList.contains('pay-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+                    window.location.href = `pembayaran.html?order_id=${orderId}`;
+                }
             });
 
-            document.querySelector('.checkout-btn').addEventListener('click', () => {
-                alert('Fitur checkout belum tersedia.');
+            // Close modal
+            closeModalButton.addEventListener('click', () => {
+                modal.classList.remove('active');
             });
+
+            try {
+                const response = await fetch('/auth/user');
+                const data = await response.json();
+
+                if (data.success && data.user) {
+                    const profilePicture = document.getElementById('profile-picture');
+                    profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('userEmail', data.user.email);
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Error fetching user details:', error);
+                window.location.href = '/login';
+            }
         });
     </script>
 </body>

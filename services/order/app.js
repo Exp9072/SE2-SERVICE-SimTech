@@ -123,6 +123,34 @@ app.get('/api/orders', authenticateUser, async (req, res) => {
     }
 });
 
+app.get('/api/orders/:orderId/items', authenticateUser, async (req, res) => {
+    const { orderId } = req.params;
+
+    try {
+        const [orderItems] = await db.query(
+            `SELECT order_items.product_id, 
+                    items.item_name AS name, 
+                    order_items.quantity, 
+                    order_items.price
+             FROM order_items
+             JOIN items ON order_items.product_id = items.item_id
+             WHERE order_items.order_id = ?`,
+            [orderId]
+        );
+
+        if (orderItems.length === 0) {
+            return res.status(404).json({ message: 'Items not found for this order.' });
+        }
+
+        res.json(orderItems);
+    } catch (error) {
+        console.error('Error fetching order items:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
+
+
+
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
 app.listen(PORT, () => console.log(`Order service running on port ${PORT}`));

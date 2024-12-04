@@ -116,45 +116,38 @@
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const orderId = urlParams.get('order_id');
             const orderIdInput = document.getElementById('order-id');
-
             if (orderId) {
                 orderIdInput.value = orderId;
             } else {
                 alert('Nomor pesanan tidak ditemukan.');
                 window.location.href = '/orders';
             }
-
             const paymentForm = document.getElementById('payment-form');
             paymentForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-
                 const paymentMethod = document.getElementById('payment-method').value;
-
                 if (!paymentMethod) {
                     alert('Silakan pilih metode pembayaran.');
                     return;
                 }
-
                 try {
                     const response = await fetch(`/api/payments`, {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
+                            'user-id': localStorage.getItem('userId'), // Tambahkan user-id
                         },
                         body: JSON.stringify({ 
-                            order_id: orderId, 
-                            payment_method: paymentMethod 
+                            orderId: orderId, 
+                            paymentMethod: paymentMethod,
                         }),
                     });
-
                     const result = await response.json();
-
                     if (response.ok) {
                         alert('Pembayaran berhasil!');
                         window.location.href = '/orders';

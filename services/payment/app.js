@@ -22,19 +22,22 @@ async function authenticateUser(req, res, next) {
     const userId = req.headers['user-id'];
 
     if (!userId) {
+        console.error('Authentication failed: Missing user ID'); // Debugging
         return res.status(401).json({ message: 'Unauthorized: User ID is missing.' });
     }
 
     try {
         const [rows] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
         if (rows.length === 0) {
+            console.error('Authentication failed: User not found'); // Debugging
             return res.status(401).json({ message: 'Unauthorized: User not found.' });
         }
 
         req.userEmail = rows[0].email;
+        console.log('Authentication successful:', req.userEmail); // Debugging
         next();
     } catch (error) {
-        console.error('Error authenticating user:', error);
+        console.error('Error authenticating user:', error); // Debugging
         res.status(500).json({ message: 'Internal server error.' });
     }
 }
@@ -44,10 +47,13 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
     const { orderId, paymentMethod } = req.body;
 
     if (!orderId || !paymentMethod) {
+        console.error('Invalid payment request:', req.body); // Debugging
         return res.status(400).json({ message: 'Order ID dan metode pembayaran diperlukan.' });
     }
 
     try {
+        console.log(`Processing payment for order ID: ${orderId}, Payment Method: ${paymentMethod}`); // Debugging
+        
         // Periksa apakah pesanan ada dan belum dibayar
         const [order] = await db.query(
             'SELECT * FROM orders WHERE order_id = ? AND email = ? AND payment = "unpaid"',
@@ -55,6 +61,7 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
         );
 
         if (order.length === 0) {
+            console.error('Order not found or already paid:', orderId); // Debugging
             return res.status(404).json({ message: 'Pesanan tidak ditemukan atau sudah dibayar.' });
         }
 
@@ -64,9 +71,10 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
             ['paid', orderId]
         );
 
+        console.log(`Payment successful for order ID: ${orderId}`); // Debugging
         res.status(200).json({ message: 'Pembayaran berhasil.', orderId });
     } catch (error) {
-        console.error('Error processing payment:', error);
+        console.error('Error processing payment:', error); // Debugging
         res.status(500).json({ message: 'Terjadi kesalahan saat memproses pembayaran.' });
     }
 });

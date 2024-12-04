@@ -149,6 +149,40 @@
             background-color: #005bb5;
         }
 
+        /* Modal CSS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            border-radius: 8px;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+        }
+
+        .modal .close-btn {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+
         footer {
             text-align: center;
             margin-top: 20px;
@@ -177,6 +211,12 @@
     </header>
     <h1>Daftar Pesanan</h1>
     <div class="orders"></div>
+    <!-- Modal for Order Details -->
+    <div class="modal" id="order-detail-modal">
+        <h2>Detail Barang</h2>
+        <div id="order-detail-content"></div>
+        <button class="close-btn">Tutup</button>
+    </div>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
@@ -189,6 +229,9 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
+            const modal = document.getElementById('order-detail-modal');
+            const modalContent = document.getElementById('order-detail-content');
+            const closeModalButton = modal.querySelector('.close-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
 
             if (!userId) {
@@ -225,6 +268,9 @@
                             <p>Pembayaran: ${order.payment === 'unpaid' ? 'Belum Dibayar' : 'Sudah Dibayar'}</p>
                             <p>Status: ${order.status}</p>
                             <p>Tanggal: ${new Date(order.order_date).toLocaleString('id-ID')}</p>
+                            <button class="detail-btn" data-order-id="${order.order_id}">
+                                Detail Barang
+                            </button>
                             ${order.payment === 'unpaid' ? `
                                 <button class="pay-btn" data-order-id="${order.order_id}">
                                     Bayar
@@ -238,6 +284,48 @@
                 console.error('Error fetching orders:', error);
                 ordersContainer.innerHTML = '<p>Gagal memuat pesanan. Silakan coba lagi nanti.</p>';
             }
+
+            // Event listener for Detail Barang button
+            document.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('detail-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+
+                    try {
+                        const response = await fetch(`/api/orders/${orderId}/items`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'user-id': userId,
+                            },
+                        });
+
+                        const items = await response.json();
+                        if (response.ok && items.length > 0) {
+                            modalContent.innerHTML = items.map(item => `
+                                <p><strong>${item.name}</strong>: ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')}</p>
+                            `).join('');
+                            modal.classList.add('active');
+                        } else {
+                            modalContent.innerHTML = '<p>Detail barang tidak ditemukan.</p>';
+                            modal.classList.add('active');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching order items:', error);
+                        alert('Gagal memuat detail barang.');
+                    }
+                }
+
+                if (e.target.classList.contains('pay-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+                    window.location.href = `pembayaran.html?order_id=${orderId}`;
+                }
+            });
+
+            // Close modal
+            closeModalButton.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+
 
             try {
                 // Periksa apakah pengguna telah login
@@ -274,7 +362,7 @@
                 });
 
                 orderBtn.addEventListener('click', () => {
-                    window.location.href = '/order';
+                    window.location.href = '/orders';
                 });
     
                 logoutBtn.addEventListener('click', async () => {
