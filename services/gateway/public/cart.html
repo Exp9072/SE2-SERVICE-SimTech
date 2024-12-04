@@ -149,9 +149,21 @@
         <p>&copy; 2024 SimTech</p>
     </footer>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const cartItemsContainer = document.querySelector('.cart-items');
             const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+
+            console.log('User ID:', userId); // Debugging: pastikan userId yang benar digunakan
+            console.log('Cart items:', cart); // Debugging
+
+            if (!userId) {
+                alert('Silakan login terlebih dahulu.');
+                window.location.href = '/login';
+                return;
+            }
+
+            let totalPrice = 0;
 
             if (cart.length === 0) {
                 cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
@@ -160,6 +172,8 @@
                     const cartItem = document.createElement('div');
                     cartItem.classList.add('cart-item');
                     const price = item.price ? `Rp ${item.price.toLocaleString()}` : 'Tidak tersedia';
+                    totalPrice += item.price;
+
                     cartItem.innerHTML = `
                         <div>
                             <span class="name">${item.name}</span><br>
@@ -169,6 +183,13 @@
                     `;
                     cartItemsContainer.appendChild(cartItem);
                 });
+
+                const totalPriceElement = document.createElement('div');
+                totalPriceElement.classList.add('total-price');
+                totalPriceElement.innerHTML = `
+                    <strong>Total Harga: Rp <span>${totalPrice.toLocaleString()}</span></strong>
+                `;
+                cartItemsContainer.appendChild(totalPriceElement);
             }
 
             document.querySelectorAll('.remove-btn').forEach((button) => {
@@ -180,8 +201,35 @@
                 });
             });
 
-            document.querySelector('.checkout-btn').addEventListener('click', () => {
-                alert('Fitur checkout belum tersedia.');
+            document.querySelector('.checkout-btn').addEventListener('click', async () => {
+                if (cart.length === 0) {
+                    alert('Keranjang Anda kosong.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/orders', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId, // Pastikan userId diteruskan
+                        },
+                        body: JSON.stringify({ items: cart }),
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert('Pesanan berhasil dibuat! Nomor pesanan Anda: ' + result.orderId);
+                        localStorage.removeItem('cart'); // Kosongkan keranjang setelah checkout
+                        window.location.href = '/orders'; // Redirect ke halaman daftar pesanan
+                    } else {
+                        alert(`Gagal membuat pesanan: ${result.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error during checkout:', error);
+                    alert('Terjadi kesalahan saat membuat pesanan.');
+                }
             });
         });
     </script>

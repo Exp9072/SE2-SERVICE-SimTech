@@ -22,12 +22,14 @@ app.use(express.json());
 app.get('/api/products', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM items');
+        console.log('Products fetched:', rows); // Debugging
         res.json(rows);
     } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 
 // Endpoint untuk mendapatkan detail produk berdasarkan item_id
 app.get('/api/products/:id', async (req, res) => {

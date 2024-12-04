@@ -35,8 +35,6 @@ app.use('/register', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/register',
 }));
 
-
-
 // Proxy untuk Google OAuth
 app.use('/auth/google', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google',
@@ -94,6 +92,22 @@ app.use('/login', proxy('http://localhost:3001', {
 app.use('/api/products', proxy('http://localhost:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
+
+// Proxy untuk Order Service
+app.use('/api/orders', proxy('http://localhost:3003', {
+    proxyReqPathResolver: (req) => req.originalUrl,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
+        if (!userId) {
+            throw new Error('Missing user-id header. User must be authenticated.');
+        }
+        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan Order
+        return proxyReqOpts;
+    },
+}));
+
+
+
 
 
 // Jalankan Gateway

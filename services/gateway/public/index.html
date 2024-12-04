@@ -544,26 +544,26 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const productCarousel = document.querySelector('#pc-ready .product-carousel');
-        
+    
             let isLoggedIn = false;
-        
+    
             // Slider Logic 
             const sliderContainer = document.querySelector('.slider-container');
             const slides = document.querySelectorAll('.slider-container img');
             const totalSlides = slides.length;
-        
+    
             let currentIndex = 0;
-        
+    
             const updateSliderPosition = () => {
                 const offset = currentIndex * -100; // Perpindahan dalam persen
                 sliderContainer.style.transform = `translateX(${offset}%)`;
             };
-        
+    
             const nextSlide = () => {
                 currentIndex = (currentIndex + 1) % totalSlides; // Kembali ke slide pertama setelah terakhir
                 updateSliderPosition();
             };
-        
+    
             // Scroll otomatis ke bagian terkait
             document.querySelectorAll('.category').forEach(category => {
                 category.addEventListener('click', function () {
@@ -580,7 +580,7 @@
                     }
                 });
             });
-        
+    
             // Scroll otomatis untuk nav-link
             document.querySelectorAll('.scroll-link').forEach(link => {
                 link.addEventListener('click', function (e) {
@@ -594,28 +594,28 @@
                     }
                 });
             });
-        
+    
             // Fungsi untuk memuat produk dari API berdasarkan tipe "PC Ready"
             const loadProducts = async () => {
                 try {
                     const response = await fetch('/api/products'); // Panggil endpoint API produk
                     const products = await response.json();
-    
+
                     // Filter produk untuk hanya mengambil item_type = "PC Ready"
                     const pcReadyProducts = products.filter(product => product.item_type === 'PC Ready');
-    
+
                     if (pcReadyProducts.length === 0) {
                         productCarousel.innerHTML = '<p>Tidak ada produk PC Ready tersedia.</p>';
                         return;
                     }
-    
+
                     productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
-    
+
                     // Tambahkan produk ke elemen HTML
                     pcReadyProducts.forEach((product) => {
                         const productCard = document.createElement('div');
                         productCard.classList.add('product-card');
-    
+
                         productCard.innerHTML = `
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
                             <div class="name">${product.item_name}</div>
@@ -625,22 +625,22 @@
                                 Beli
                             </button>
                         `;
-    
+
                         productCarousel.appendChild(productCard);
                     });
-    
+
                     // Event listener untuk tombol beli
                     document.querySelectorAll('.buy-btn').forEach((button) => {
                         button.addEventListener('click', (e) => {
-                            const productId = button.dataset.id;
+                            const item_id = button.dataset.id; // Ganti ke item_id
                             const productName = button.dataset.name;
                             const productPrice = parseFloat(button.dataset.price);
-    
+
                             if (!isLoggedIn) {
                                 alert('Silakan login terlebih dahulu untuk membeli barang.');
                                 window.location.href = '/login';
                             } else {
-                                addToCart(productId, productName, productPrice);
+                                addToCart(item_id, productName, productPrice); // Ganti ke item_id
                             }
                         });
                     });
@@ -649,66 +649,70 @@
                     productCarousel.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
                 }
             };
-        
+
             // Fungsi untuk menambahkan produk ke keranjang
-            const addToCart = (productId, productName, productPrice) => {
+            const addToCart = (item_id, productName, productPrice) => {
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                cart.push({ id: productId, name: productName, price: productPrice });
+                cart.push({
+                    item_id, // Gunakan item_id sebagai kunci
+                    name: productName,
+                    price: productPrice,
+                    quantity: 1, // Default quantity untuk setiap item
+                });
                 localStorage.setItem('cart', JSON.stringify(cart));
                 alert(`${productName} berhasil ditambahkan ke keranjang!`);
                 window.location.href = 'cart.html';
             };
-        
+
+
+    
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');
                 const data = await response.json();
-                isLoggedIn = data.success && data.user;
-            } catch (err) {
-                console.error('Error checking login status:', err);
-            }
-        
-            // Muat produk
-            await loadProducts();
-        
-            // Timer untuk mengganti slide setiap 5 detik
-            setInterval(nextSlide, 5000);
-        
-            // User Profile and Dropdown Logic
-            try {
-                const response = await fetch('/auth/user');
-                const data = await response.json();
-        
+    
                 if (data.success && data.user) {
+                    isLoggedIn = true;
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
+                    localStorage.setItem('userId', data.user.id); // Simpan userId
+                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
+                    console.log('index-html');
+                    console.log('User-id', data.user.id);
+                    console.log('userEmail',data.user.email);
                     loginBtn.style.display = 'none';
                     logoutBtn.style.display = 'block';
                 } else {
                     profilePicture.src = 'images/default-profile.png';
                     loginBtn.style.display = 'block';
                     logoutBtn.style.display = 'none';
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
                 }
-        
+    
                 profilePicture.addEventListener('click', (e) => {
                     e.stopPropagation();
                     dropdownMenu.classList.toggle('active');
                 });
-        
+    
                 loginBtn.addEventListener('click', () => {
                     window.location.href = '/login';
                 });
-        
+    
                 logoutBtn.addEventListener('click', async () => {
                     await fetch('/logout', { method: 'POST' });
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
                     window.location.href = '/'; // Redirect ke homepage
                 });
-        
-                document.addEventListener('click', () => {
-                    dropdownMenu.classList.remove('active');
-                });
             } catch (err) {
-                console.error('Error:', err);
+                console.error('Error checking login status:', err);
             }
+    
+            // Muat produk
+            await loadProducts();
+    
+            // Timer untuk mengganti slide setiap 5 detik
+            setInterval(nextSlide, 5000);
         });
     </script>
 </body>
