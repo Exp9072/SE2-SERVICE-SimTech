@@ -8,42 +8,48 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const app = express();
 app.use(morgan('dev'));
 
-// Konfigurasi Rate Limiter Global
+// **1. Rate Limiter Global**
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 200, // Maksimal 200 permintaan per IP dalam 15 menit
+    max: 300, // Maksimal 300 permintaan per IP dalam 15 menit
     message: {
         status: 429,
         message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.',
     },
-    standardHeaders: true, // Menampilkan header rate limit
-    legacyHeaders: false,  // Nonaktifkan header lama
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
-// Middleware Rate Limiter Global
+// Terapkan Rate Limiter Global untuk semua rute
 app.use(globalLimiter);
 
-// Middleware Throttle
+// **2. Throttle per IP**
 const throttle = (delay) => {
-    let lastCall = 0;
-
+    const requestTimes = {}; // Penyimpanan sementara untuk IP
     return (req, res, next) => {
+        const clientIp = req.ip;
         const now = Date.now();
 
-        if (now - lastCall < delay) {
+        if (requestTimes[clientIp] && now - requestTimes[clientIp] < delay) {
             return res.status(429).json({
                 status: 429,
                 message: 'Terlalu banyak permintaan dalam waktu singkat. Silakan coba lagi.',
             });
         }
 
-        lastCall = now;
+        requestTimes[clientIp] = now; // Perbarui waktu terakhir untuk IP ini
         next();
     };
 };
 
+// Middleware untuk throttle per IP
+const ipThrottle = throttle(600); // Batasan per IP (600ms antar permintaan)
+
+// **Gunakan Middleware Global + Throttle IP untuk Semua Endpoint**
+app.use(ipThrottle);
+
 // Sajikan file statis
-app.use(throttle(500),express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Rute utama untuk Gateway
 app.get('/', (req, res) => {
@@ -72,21 +78,21 @@ app.get('/register', (req, res) => {
 });
 
 // Proxy untuk Logout
-app.use( '/logout', throttle(500), proxy('http://localhost:3001', {
+app.use( '/logout',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/logout',
 }));
 
 // Proxy untuk Register
-app.use('/register', throttle(500), proxy('http://localhost:3001', {
+app.use('/register',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/register',
 }));
 
 // Proxy untuk Google OAuth
-app.use('/auth/google', throttle(500), proxy('http://localhost:3001', {
+app.use('/auth/google',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google',
 }));
 
-app.use('/auth/google/callback', throttle(500), proxy('http://localhost:3001', {
+app.use('/auth/google/callback',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying Google OAuth callback response:', proxyRes.statusCode);
@@ -105,11 +111,11 @@ app.use('/auth/google/callback', throttle(500), proxy('http://localhost:3001', {
 
 
 // Proxy untuk GitHub OAuth
-app.use('/auth/github', throttle(500), proxy('http://localhost:3001', {
+app.use('/auth/github',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github',
 }));
 
-app.use('/auth/github/callback', throttle(500), proxy('http://localhost:3001', {
+app.use('/auth/github/callback',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying GitHub OAuth callback response:', proxyRes.statusCode);
@@ -125,22 +131,22 @@ app.use('/auth/github/callback', throttle(500), proxy('http://localhost:3001', {
     },
 }));
 
-app.use('/auth/user', throttle(500), proxy('http://localhost:3001', {
+app.use('/auth/user',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/user',
 }));
 
 // Proxy untuk Login
-app.use('/login', throttle(500), proxy('http://localhost:3001', {
+app.use('/login',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/login',
 }));
 
 // Proxy untuk Product Service
-app.use('/api/products', throttle(500), proxy('http://localhost:3002', {
+app.use('/api/products',  proxy('http://localhost:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
 // Proxy untuk Order Service
-app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
+app.use('/api/orders',  proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
@@ -153,7 +159,7 @@ app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
 }));
 
 // Proxy untuk Payment Service
-app.use('/api/payments', throttle(500), proxy('http://localhost:3004', {
+app.use('/api/payments',  proxy('http://localhost:3004', {
     proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
@@ -166,7 +172,7 @@ app.use('/api/payments', throttle(500), proxy('http://localhost:3004', {
 }));
 
 
-app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
+app.use('/api/orders',  proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => {
         return req.originalUrl;
     },
