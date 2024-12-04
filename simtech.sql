@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 03, 2024 at 05:23 AM
+-- Generation Time: Dec 04, 2024 at 05:12 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -54,7 +54,7 @@ INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `pri
 (6, 'G.Skill Trident Z RGB 32GB', 'RAM', 'G.Skill', 'Trident Z RGB', 2519860, 25, 'image/gskill_trident_z_rgb_32gb.jpg', NULL, 'DDR4', NULL),
 (7, 'ASUS ROG Strix B550-F', 'Motherboard', 'ASUS', 'ROG Strix B550-F', 2799860, 8, 'image/asus_rog_strix_b550_f.jpg', 'AM4', 'DDR4', 4.0),
 (8, 'MSI MPG B550 Gaming Edge WiFi', 'Motherboard', 'MSI', 'MPG B550', 2800000, 8, 'image/msi_mpg_b550_gaming_edge_wifi.jpg', 'AM4', 'DDR4', 4.0),
-(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 10, 'image/pcready1.jpg', NULL, NULL, NULL),
+(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 9, 'image/pcready1.jpg', NULL, NULL, NULL),
 (10, 'Paket Gaming', 'PC Ready', 'LAPEER', 'PaketGaming', 45699860, 10, 'image/pcready2.jpg', NULL, NULL, NULL),
 (11, 'Paket Starter', 'PC Ready', 'LAPEER', 'PaketStarter', 14985000, 10, 'image/pcready3.jpg', NULL, NULL, NULL),
 (12, 'ASUS Prime Z490-A', 'Motherboard', 'ASUS', 'Prime Z490-A', 3299860, 5, 'image/asus_prime_z490_a.jpg', 'LGA1200', 'DDR4', 4.0),
@@ -84,6 +84,49 @@ INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `pri
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `orders`
+--
+
+CREATE TABLE `orders` (
+  `order_id` int(11) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `order_date` datetime NOT NULL,
+  `total_price` decimal(10,2) NOT NULL,
+  `payment` enum('paid','unpaid') DEFAULT 'unpaid',
+  `status` enum('belum dikirim','sedang dikirim','sudah dikirim') DEFAULT 'belum dikirim'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `orders`
+--
+
+INSERT INTO `orders` (`order_id`, `email`, `order_date`, `total_price`, `payment`, `status`) VALUES
+(1, 'jodyislami103@gmail.com', '2024-12-04 11:05:34', 14099860.00, 'unpaid', 'belum dikirim');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `order_items`
+--
+
+CREATE TABLE `order_items` (
+  `id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `price` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `order_items`
+--
+
+INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price`) VALUES
+(1, 1, 9, 1, 14099860.00);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -107,7 +150,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `oauth_provider`
 (2, 'User Admin1', 'user-admin1@simtech.com', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'user-admin', NULL, NULL, NULL),
 (3, 'User2', 'user2@simtech.com', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'user', NULL, NULL, NULL),
 (7, 'Muhammad Jody Putra Islami', 'jodyislami103@gmail.com', NULL, 'user', 'google', '101863837434744365423', 'https://lh3.googleusercontent.com/a/ACg8ocJd4G_mszuLRmyQ6x4oo_CLBRLRa6KSP6b6prmGa01-TWZ1Zmt_=s96-c'),
-(8, 'Jody', 'Exp9072', NULL, 'user', 'github', '59360084', 'https://avatars.githubusercontent.com/u/59360084?v=4');
+(8, 'Jody', 'Exp9072', NULL, 'user', 'github', '59360084', 'https://avatars.githubusercontent.com/u/59360084?v=4'),
+(9, 'Jodyyy', 'jodi@cls-v2.com', 'jody123', 'user', NULL, NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -118,6 +162,20 @@ INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `oauth_provider`
 --
 ALTER TABLE `items`
   ADD PRIMARY KEY (`item_id`);
+
+--
+-- Indexes for table `orders`
+--
+ALTER TABLE `orders`
+  ADD PRIMARY KEY (`order_id`);
+
+--
+-- Indexes for table `order_items`
+--
+ALTER TABLE `order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `order_id` (`order_id`),
+  ADD KEY `product_id` (`product_id`);
 
 --
 -- Indexes for table `users`
@@ -137,10 +195,33 @@ ALTER TABLE `items`
   MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
+-- AUTO_INCREMENT for table `orders`
+--
+ALTER TABLE `orders`
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `order_items`
+--
+ALTER TABLE `order_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `order_items`
+--
+ALTER TABLE `order_items`
+  ADD CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `items` (`item_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
