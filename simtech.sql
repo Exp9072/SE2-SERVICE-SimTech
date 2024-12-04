@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 04, 2024 at 08:27 AM
+-- Generation Time: Dec 04, 2024 at 11:40 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -54,9 +54,9 @@ INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `pri
 (6, 'G.Skill Trident Z RGB 32GB', 'RAM', 'G.Skill', 'Trident Z RGB', 2519860, 25, 'image/gskill_trident_z_rgb_32gb.jpg', NULL, 'DDR4', NULL),
 (7, 'ASUS ROG Strix B550-F', 'Motherboard', 'ASUS', 'ROG Strix B550-F', 2799860, 8, 'image/asus_rog_strix_b550_f.jpg', 'AM4', 'DDR4', 4.0),
 (8, 'MSI MPG B550 Gaming Edge WiFi', 'Motherboard', 'MSI', 'MPG B550', 2800000, 8, 'image/msi_mpg_b550_gaming_edge_wifi.jpg', 'AM4', 'DDR4', 4.0),
-(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 6, 'image/pcready1.jpg', NULL, NULL, NULL),
-(10, 'Paket Gaming', 'PC Ready', 'LAPEER', 'PaketGaming', 45699860, 0, 'image/pcready2.jpg', NULL, NULL, NULL),
-(11, 'Paket Starter', 'PC Ready', 'LAPEER', 'PaketStarter', 14985000, 9, 'image/pcready3.jpg', NULL, NULL, NULL),
+(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 5, 'image/pcready1.jpg', NULL, NULL, NULL),
+(10, 'Paket Gaming', 'PC Ready', 'LAPEER', 'PaketGaming', 45699860, 8, 'image/pcready2.jpg', NULL, NULL, NULL),
+(11, 'Paket Starter', 'PC Ready', 'LAPEER', 'PaketStarter', 14985000, 8, 'image/pcready3.jpg', NULL, NULL, NULL),
 (12, 'ASUS Prime Z490-A', 'Motherboard', 'ASUS', 'Prime Z490-A', 3299860, 5, 'image/asus_prime_z490_a.jpg', 'LGA1200', 'DDR4', 4.0),
 (13, 'Gigabyte Z790 Aorus Elite AX', 'Motherboard', 'Gigabyte', 'Z790 Aorus Elite AX', 5604000, 12, 'image/gigabyte_z790_aorus_elite_ax.jpg', 'LGA1700', 'DDR5', 5.0),
 (14, 'Intel Core i7-12700K', 'Processor', 'Intel', 'i7-12700K', 5499000, 12, 'image/intel_i7_12700k.jpg', 'LGA1700', NULL, NULL),
@@ -101,7 +101,9 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`order_id`, `email`, `order_date`, `total_price`, `payment`, `status`) VALUES
-(1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'unpaid', 'belum dikirim');
+(1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'unpaid', 'belum dikirim'),
+(2, 'jodyislami103@gmail.com', '2024-12-04 15:27:17', 45699860.00, 'paid', 'sedang dikirim'),
+(3, 'jodyislami103@gmail.com', '2024-12-04 17:06:41', 74784720.00, 'unpaid', 'belum dikirim');
 
 -- --------------------------------------------------------
 
@@ -126,7 +128,11 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price`) 
 (17, 1, 10, 1, 45699860.00),
 (18, 1, 11, 1, 14985000.00),
 (19, 1, 29, 1, 18999900.00),
-(20, 1, 30, 1, 20999900.00);
+(20, 1, 30, 1, 20999900.00),
+(21, 2, 10, 1, 45699860.00),
+(22, 3, 11, 1, 14985000.00),
+(23, 3, 10, 1, 45699860.00),
+(24, 3, 9, 1, 14099860.00);
 
 -- --------------------------------------------------------
 
@@ -202,13 +208,13 @@ ALTER TABLE `items`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `users`
