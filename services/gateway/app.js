@@ -2,10 +2,45 @@ const express = require('express');
 const morgan = require('morgan');
 const path = require('path');
 const proxy = require('express-http-proxy');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 app.use(morgan('dev'));
+
+// Konfigurasi Rate Limiter Global
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 200, // Maksimal 200 permintaan per IP dalam 15 menit
+    message: {
+        status: 429,
+        message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.',
+    },
+    standardHeaders: true, // Menampilkan header rate limit
+    legacyHeaders: false,  // Nonaktifkan header lama
+});
+
+// Middleware Rate Limiter Global
+app.use(globalLimiter);
+
+// Middleware Throttle
+const throttle = (delay) => {
+    let lastCall = 0;
+
+    return (req, res, next) => {
+        const now = Date.now();
+
+        if (now - lastCall < delay) {
+            return res.status(429).json({
+                status: 429,
+                message: 'Terlalu banyak permintaan dalam waktu singkat. Silakan coba lagi.',
+            });
+        }
+
+        lastCall = now;
+        next();
+    };
+};
 
 // Sajikan file statis
 app.use(express.static(path.join(__dirname, 'public')));
@@ -32,7 +67,6 @@ app.get('/payment', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'pembayaran.html'));
 });
 
-
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -56,19 +90,15 @@ app.use('/auth/google/callback', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/google/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying Google OAuth callback response:', proxyRes.statusCode);
-        console.log('Status code:', proxyres.statusCode);
-        console.log('Response Header:', proxyRes.headers);
         const redirectLocation = proxyRes.headers['location']; // Ambil lokasi redirect
         if (proxyRes.statusCode === 302 && redirectLocation) {
             console.log('Redirecting to:', redirectLocation);
             res.redirect(redirectLocation); // Redirect pengguna
             return;
         }
-        console.log('Redirecting gagal');
         return proxyResData; // Pastikan data tetap diteruskan
     },
 }));
-
 
 // Proxy untuk GitHub OAuth
 app.use('/auth/github', proxy('http://localhost:3001', {
@@ -79,8 +109,6 @@ app.use('/auth/github/callback', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         console.log('Proxying GitHub OAuth callback response:', proxyRes.statusCode);
-        console.log('Status code:', proxyres.statusCode);
-        console.log('Response Header:', proxyRes.headers);
         const redirectLocation = proxyRes.headers['location']; // Ambil lokasi redirect
         if (proxyRes.statusCode === 302 && redirectLocation) {
             console.log('Redirecting to:', redirectLocation);
@@ -101,12 +129,12 @@ app.use('/login', proxy('http://localhost:3001', {
 }));
 
 // Proxy untuk Product Service
-app.use('/api/products', proxy('http://localhost:3002', {
+app.use('/api/products', throttle(500), proxy('http://localhost:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
 // Proxy untuk Order Service
-app.use('/api/orders', proxy('http://localhost:3003', {
+app.use('/api/orders', throttle(500), proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
@@ -119,40 +147,14 @@ app.use('/api/orders', proxy('http://localhost:3003', {
 }));
 
 // Proxy untuk Payment Service
-app.use('/api/payments', proxy('http://localhost:3004', {
-    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
+app.use('/api/payments', throttle(500), proxy('http://localhost:3004', {
+    proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
         if (!userId) {
             throw new Error('Missing user-id header. User must be authenticated.');
         }
         proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
-        return proxyReqOpts;
-    },
-}));
-
-// Proxy untuk Payment Service
-app.use('/api/payments', proxy('http://localhost:3004', {
-    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
-        if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
-        }
-        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
-        return proxyReqOpts;
-    },
-}));
-
-app.use('/api/orders', proxy('http://localhost:3003', {
-    proxyReqPathResolver: (req) => {
-        return req.originalUrl;
-    },
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];
-        if (userId) {
-            proxyReqOpts.headers['user-id'] = userId;
-        }
         return proxyReqOpts;
     },
 }));
