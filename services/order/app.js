@@ -50,6 +50,14 @@ app.post('/api/orders', (req, res) => {
   // message kemungkinan berisikan 'id' dari order tersebut
 });
 
+// TODO
+// 1. buat fungsi (async kemungkinan) untuk ganti status order
+//    param: orderId 
+// 2. buat rabbitmq listener dengan didalam nya switch case
+//    message yang dikirm/ diterima kemungkinan berbentuk JSON
+//    dengan isi tipe_message dan orderId
+
+
 // Jalankan server
 const PORT = 3003;
 app.listen(PORT, () => {
