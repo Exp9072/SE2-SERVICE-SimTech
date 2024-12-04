@@ -252,13 +252,14 @@
             <a href="/katalog.html" class="nav-link" data-require-login="false">Katalog</a>
             <a href="/pc-ready.html" class="nav-link" data-require-login="false">PC Ready</a>
             <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
-            <a href="/cart.html" class="nav-link" data-require-login="true">Cart</a>
+            <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
         </nav>   
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
             <div id="dropdown-menu" class="dropdown">
                 <button id="login-btn" style="display: none;">Login</button>
                 <button id="logout-btn" style="display: none;">Logout</button>
+                <button id="order-btn" style="display: none;">Order</button>
             </div>
         </div>
     </header>
@@ -543,6 +544,7 @@
             const dropdownMenu = document.getElementById('dropdown-menu');
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
+            const orderBtn = document.getElementById('order-btn');
             const productCarousel = document.querySelector('#pc-ready .product-carousel');
     
             let isLoggedIn = false;
@@ -661,7 +663,7 @@
                 });
                 localStorage.setItem('cart', JSON.stringify(cart));
                 alert(`${productName} berhasil ditambahkan ke keranjang!`);
-                window.location.href = 'cart.html';
+                // window.location.href = '/cart';
             };
 
 
@@ -681,10 +683,12 @@
                     console.log('userEmail',data.user.email);
                     loginBtn.style.display = 'none';
                     logoutBtn.style.display = 'block';
+                    orderBtn.style.display = 'block';
                 } else {
                     profilePicture.src = 'images/default-profile.png';
                     loginBtn.style.display = 'block';
                     logoutBtn.style.display = 'none';
+                    orderBtn.style.display = 'block';
                     localStorage.removeItem('userId');
                     localStorage.removeItem('userEmail');
                 }
@@ -696,6 +700,10 @@
     
                 loginBtn.addEventListener('click', () => {
                     window.location.href = '/login';
+                });
+
+                orderBtn.addEventListener('click', () => {
+                    window.location.href = '/orders';
                 });
     
                 logoutBtn.addEventListener('click', async () => {

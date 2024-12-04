@@ -20,6 +20,14 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+app.get('/orders', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'order.html'));
+});
+
+app.get('/cart', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'cart.html'));
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -105,10 +113,6 @@ app.use('/api/orders', proxy('http://localhost:3003', {
         return proxyReqOpts;
     },
 }));
-
-
-
-
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

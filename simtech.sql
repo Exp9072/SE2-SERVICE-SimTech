@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 04, 2024 at 05:12 AM
+-- Generation Time: Dec 04, 2024 at 08:27 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -54,9 +54,9 @@ INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `pri
 (6, 'G.Skill Trident Z RGB 32GB', 'RAM', 'G.Skill', 'Trident Z RGB', 2519860, 25, 'image/gskill_trident_z_rgb_32gb.jpg', NULL, 'DDR4', NULL),
 (7, 'ASUS ROG Strix B550-F', 'Motherboard', 'ASUS', 'ROG Strix B550-F', 2799860, 8, 'image/asus_rog_strix_b550_f.jpg', 'AM4', 'DDR4', 4.0),
 (8, 'MSI MPG B550 Gaming Edge WiFi', 'Motherboard', 'MSI', 'MPG B550', 2800000, 8, 'image/msi_mpg_b550_gaming_edge_wifi.jpg', 'AM4', 'DDR4', 4.0),
-(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 9, 'image/pcready1.jpg', NULL, NULL, NULL),
-(10, 'Paket Gaming', 'PC Ready', 'LAPEER', 'PaketGaming', 45699860, 10, 'image/pcready2.jpg', NULL, NULL, NULL),
-(11, 'Paket Starter', 'PC Ready', 'LAPEER', 'PaketStarter', 14985000, 10, 'image/pcready3.jpg', NULL, NULL, NULL),
+(9, 'Paket Sultan', 'PC Ready', 'LAPEER', 'PaketSultan', 14099860, 6, 'image/pcready1.jpg', NULL, NULL, NULL),
+(10, 'Paket Gaming', 'PC Ready', 'LAPEER', 'PaketGaming', 45699860, 0, 'image/pcready2.jpg', NULL, NULL, NULL),
+(11, 'Paket Starter', 'PC Ready', 'LAPEER', 'PaketStarter', 14985000, 9, 'image/pcready3.jpg', NULL, NULL, NULL),
 (12, 'ASUS Prime Z490-A', 'Motherboard', 'ASUS', 'Prime Z490-A', 3299860, 5, 'image/asus_prime_z490_a.jpg', 'LGA1200', 'DDR4', 4.0),
 (13, 'Gigabyte Z790 Aorus Elite AX', 'Motherboard', 'Gigabyte', 'Z790 Aorus Elite AX', 5604000, 12, 'image/gigabyte_z790_aorus_elite_ax.jpg', 'LGA1700', 'DDR5', 5.0),
 (14, 'Intel Core i7-12700K', 'Processor', 'Intel', 'i7-12700K', 5499000, 12, 'image/intel_i7_12700k.jpg', 'LGA1700', NULL, NULL),
@@ -74,8 +74,8 @@ INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `pri
 (26, 'Lian Li Lancool II Mesh', 'Casing', 'Lian Li', 'Lancool II Mesh', 1499000, 10, 'image/lian_li_lancool_ii_mesh.jpg', NULL, NULL, NULL),
 (27, 'Corsair RM750x', 'PSU', 'Corsair', 'RM750x', 2099000, 15, 'image/corsair_rm750x.jpg', NULL, NULL, NULL),
 (28, 'Cooler Master MWE Gold 750', 'PSU', 'Cooler Master', 'MWE Gold 750', 1899000, 20, 'image/cooler_master_mwe_gold_750.jpg', NULL, NULL, NULL),
-(29, 'Paket Pro Gaming', 'PC Ready', 'LAPEER', 'PaketProGaming', 18999900, 10, 'image/paket_pro_gaming.jpg', NULL, NULL, NULL),
-(30, 'Paket Editing Pro', 'PC Ready', 'LAPEER', 'PaketEditingPro', 20999900, 8, 'image/paket_editing_pro.jpg', NULL, NULL, NULL),
+(29, 'Paket Pro Gaming', 'PC Ready', 'LAPEER', 'PaketProGaming', 18999900, 7, 'image/paket_pro_gaming.jpg', NULL, NULL, NULL),
+(30, 'Paket Editing Pro', 'PC Ready', 'LAPEER', 'PaketEditingPro', 20999900, 6, 'image/paket_editing_pro.jpg', NULL, NULL, NULL),
 (31, 'Paket Streaming', 'PC Ready', 'LAPEER', 'PaketStreaming', 17999900, 7, 'image/paket_streaming.jpg', NULL, NULL, NULL),
 (32, 'Paket Budget Starter', 'PC Ready', 'LAPEER', 'PaketBudgetStarter', 9999900, 12, 'image/paket_budget_starter.jpg', NULL, NULL, NULL),
 (33, 'NZXT Kraken X63', 'Cooler', 'NZXT', 'Kraken X63', 2999000, 10, 'image/nzxt_kraken_x63.jpg', NULL, NULL, NULL),
@@ -91,7 +91,7 @@ CREATE TABLE `orders` (
   `order_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
   `order_date` datetime NOT NULL,
-  `total_price` decimal(10,2) NOT NULL,
+  `total_price` decimal(15,2) DEFAULT NULL,
   `payment` enum('paid','unpaid') DEFAULT 'unpaid',
   `status` enum('belum dikirim','sedang dikirim','sudah dikirim') DEFAULT 'belum dikirim'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -101,7 +101,7 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`order_id`, `email`, `order_date`, `total_price`, `payment`, `status`) VALUES
-(1, 'jodyislami103@gmail.com', '2024-12-04 11:05:34', 14099860.00, 'unpaid', 'belum dikirim');
+(1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'unpaid', 'belum dikirim');
 
 -- --------------------------------------------------------
 
@@ -122,7 +122,11 @@ CREATE TABLE `order_items` (
 --
 
 INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price`) VALUES
-(1, 1, 9, 1, 14099860.00);
+(16, 1, 9, 1, 14099860.00),
+(17, 1, 10, 1, 45699860.00),
+(18, 1, 11, 1, 14985000.00),
+(19, 1, 29, 1, 18999900.00),
+(20, 1, 30, 1, 20999900.00);
 
 -- --------------------------------------------------------
 
@@ -204,7 +208,7 @@ ALTER TABLE `orders`
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `users`
