@@ -32,7 +32,6 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-
 // Proxy untuk Logout
 app.use('/logout', proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/logout',
@@ -113,6 +112,34 @@ app.use('/api/orders', proxy('http://localhost:3003', {
         return proxyReqOpts;
     },
 }));
+
+// Proxy untuk Payment Service
+app.use('/api/payments', proxy('http://localhost:3004', {
+    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
+        if (!userId) {
+            throw new Error('Missing user-id header. User must be authenticated.');
+        }
+        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
+        return proxyReqOpts;
+    },
+}));
+
+// Proxy untuk Payment Service
+app.use('/api/payments', proxy('http://localhost:3004', {
+    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
+        if (!userId) {
+            throw new Error('Missing user-id header. User must be authenticated.');
+        }
+        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
+        return proxyReqOpts;
+    },
+}));
+
+
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

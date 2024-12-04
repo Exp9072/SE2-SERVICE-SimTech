@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            position: sticky; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+
+        header .brand:hover {
+            text-decoration: underline;
+        }
+
+        main {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        main h1 {
+            text-align: center;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        form input, form select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        form button {
+            width: 100%;
+            padding: 10px;
+            background-color: #017cff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        form button:hover {
+            background-color: #005bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="brand">SimTech</a>
+    </header>
+    <main>
+        <h1>Pembayaran</h1>
+        <form id="payment-form">
+            <label for="order-id">Nomor Pesanan</label>
+            <input type="text" id="order-id" name="order-id" readonly>
+
+            <label for="payment-method">Metode Pembayaran</label>
+            <select id="payment-method" name="payment-method" required>
+                <option value="">Pilih Metode</option>
+                <option value="credit-card">Kartu Kredit</option>
+                <option value="bank-transfer">Transfer Bank</option>
+                <option value="ewallet">E-Wallet</option>
+            </select>
+
+            <button type="submit">Bayar Sekarang</button>
+        </form>
+    </main>
+    <footer>
+        <p>&copy; 2024 SimTech</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order_id');
+            const orderIdInput = document.getElementById('order-id');
+
+            if (orderId) {
+                orderIdInput.value = orderId;
+            } else {
+                alert('Nomor pesanan tidak ditemukan.');
+                window.location.href = '/orders';
+            }
+
+            const paymentForm = document.getElementById('payment-form');
+            paymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const paymentMethod = document.getElementById('payment-method').value;
+
+                if (!paymentMethod) {
+                    alert('Silakan pilih metode pembayaran.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/payments`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            order_id: orderId, 
+                            payment_method: paymentMethod 
+                        }),
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert('Pembayaran berhasil!');
+                        window.location.href = '/orders';
+                    } else {
+                        alert(`Gagal melakukan pembayaran: ${result.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error processing payment:', error);
+                    alert('Terjadi kesalahan saat memproses pembayaran.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

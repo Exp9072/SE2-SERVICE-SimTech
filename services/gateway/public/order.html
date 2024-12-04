@@ -205,17 +205,30 @@
                         'user-id': userId, // Sertakan userId di header
                     },
                 });
+                
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('pay-btn')) {
+                        const orderId = e.target.getAttribute('data-order-id');
+                        window.location.href = `pembayaran.html?order_id=${orderId}`;
+                    }
+                });
+
 
                 const orders = await response.json();
+                console.log('Orders fetched:', orders);
 
                 if (response.ok && orders.length > 0) {
                     ordersContainer.innerHTML = orders.map(order => `
                         <div class="order-item">
-                            <strong>Nomor Pesanan: ${order.id}</strong>
+                            <strong>Nomor Pesanan: ${order.order_id}</strong>
                             <p>Total Harga: Rp ${order.total_price.toLocaleString('id-ID')}</p>
                             <p>Pembayaran: ${order.payment === 'unpaid' ? 'Belum Dibayar' : 'Sudah Dibayar'}</p>
                             <p>Status: ${order.status}</p>
                             <p>Tanggal: ${new Date(order.order_date).toLocaleString('id-ID')}</p>
+                            ${order.payment === 'unpaid' ? `
+                                <button class="pay-btn" data-order-id="${order.order_id}">
+                                    Bayar
+                                </button>` : `<p style="color: green;">Pesanan sudah dibayar.</p>`}
                         </div>
                     `).join('');
                 } else {

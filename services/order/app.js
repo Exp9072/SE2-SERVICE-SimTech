@@ -113,7 +113,7 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
 app.get('/api/orders', authenticateUser, async (req, res) => {
     try {
         const [orders] = await db.query(
-            'SELECT * FROM orders WHERE email = ? ORDER BY order_date DESC',
+            'SELECT order_id, email, order_date, total_price, payment, status FROM orders WHERE email = ? ORDER BY order_date DESC',
             [req.userEmail]
         );
         res.status(200).json(orders);
