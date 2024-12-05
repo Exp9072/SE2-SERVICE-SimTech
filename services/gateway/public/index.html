@@ -352,65 +352,45 @@
             <button class="close-btn">Tutup</button>
         </div>
         
-        <!-- Products -->
-        <div id="pc-ready" class="products">
+        <div id="PC-Ready-products" class="product-section">
             <h2>PC Ready</h2>
-            <div class="product-carousel">
-                <!-- <div class="product-card">
-                    <img src="images/pcready3.jpg" alt="Product 1">
-                    <div class="name">Paket Gaming Standard</div>
-                    <div class="price">Rp 30.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                    <button class="buy-btn" data-product="Paket Gaming Standard">Beli</button>
-                    <div class="description">
-                        <h4>Spesifikasi</h4>
-                        <ul>
-                            <li><strong>Prosesor:</strong> Intel Core i5 Gen 12</li>
-                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 3060</li>
-                            <li><strong>RAM:</strong> 16GB DDR4</li>
-                            <li><strong>Storage:</strong> 512GB SSD</li>
-                            <li><strong>Power Supply:</strong> 500W</li>
-                            <li><strong>Sistem Operasi:</strong> Windows 11 Home</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="product-card">
-                    <img src="images/pcready2.jpg" alt="Product 2">
-                    <div class="name">Paket Gaming Sultan</div>
-                    <div class="price">Rp 80.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                    <div class="description">
-                        <h4>Spesifikasi</h4>
-                        <ul>
-                            <li><strong>Prosesor:</strong> Intel Core i9 Gen 13</li>
-                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 4080</li>
-                            <li><strong>RAM:</strong> 32GB DDR5</li>
-                            <li><strong>Storage:</strong> 1TB SSD NVMe</li>
-                            <li><strong>Power Supply:</strong> 850W Gold Certified</li>
-                            <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="product-card">
-                    <img src="images/pcready1.jpg" alt="Product 3">
-                    <div class="name">Paket Gaming Ultra</div>
-                    <div class="price">Rp 100.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                    <div class="description">
-                        <h4>Spesifikasi</h4>
-                        <ul>
-                            <li><strong>Prosesor:</strong> AMD Ryzen 9 7950X</li>
-                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 4090</li>
-                            <li><strong>RAM:</strong> 64GB DDR5</li>
-                            <li><strong>Storage:</strong> 2TB SSD NVMe</li>
-                            <li><strong>Power Supply:</strong> 1000W Platinum Certified</li>
-                            <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
-                        </ul>
-                    </div>
-                </div> -->
-            </div>
+            <div class="product-carousel"></div>
         </div>
-        <div id="cpu" class="products">
+        <div id="Processor-products" class="product-section">
+            <h2>Processor</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="Graphics-Card-products" class="product-section">
+            <h2>Graphics Card</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="RAM-products" class="product-section">
+            <h2>RAM</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="Motherboard-products" class="product-section">
+            <h2>Motherboard</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="PSU-products" class="product-section">
+            <h2>PSU</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="Cooling-products" class="product-section">
+            <h2>Cooling</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="Casing-products" class="product-section">
+            <h2>Casing</h2>
+            <div class="product-carousel"></div>
+        </div>
+        <div id="Storage-products" class="product-section">
+            <h2>Storage</h2>
+            <div class="product-carousel"></div>
+        </div>
+        
+        
+        <!-- <div id="cpu" class="products">
             <h2>CPU</h2>
             <div class="product-carousel">
                 <div class="product-card">
@@ -576,7 +556,7 @@
                     <button class="detail-btn">View Details</button>
                 </div>
             </div>
-        </div>        
+        </div>         -->
     </main>
     <footer>
         <p>&copy; 2024 SimTech</p>
@@ -654,24 +634,31 @@
                 });
             });
     
-            // Fungsi untuk memuat produk dari API berdasarkan tipe "PC Ready"
-            const loadProducts = async () => {
+            // Fungsi untuk memuat produk dari API berdasarkan tipe tertentu
+            const loadProductsByType = async (productType) => {
                 try {
                     const response = await fetch('/api/products'); // Panggil endpoint API produk
                     const products = await response.json();
 
-                    // Filter produk untuk hanya mengambil item_type = "PC Ready"
-                    const pcReadyProducts = products.filter(product => product.item_type === 'PC Ready');
+                    // Filter produk untuk hanya mengambil item_type sesuai dengan parameter
+                    const filteredProducts = products.filter(product => product.item_type.toLowerCase() === productType.toLowerCase());
 
-                    if (pcReadyProducts.length === 0) {
-                        productCarousel.innerHTML = '<p>Tidak ada produk PC Ready tersedia.</p>';
+                    // Ambil elemen carousel berdasarkan ID
+                    const productCarousel = document.querySelector(`#${productType}-products .product-carousel`);
+                    if (!productCarousel) {
+                        console.error(`Tidak dapat menemukan elemen dengan ID ${productType}-products`);
+                        return;
+                    }
+
+                    if (filteredProducts.length === 0) {
+                        productCarousel.innerHTML = `<p>Tidak ada produk ${productType} tersedia.</p>`;
                         return;
                     }
 
                     productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
 
                     // Tambahkan produk ke elemen HTML
-                    pcReadyProducts.forEach((product) => {
+                    filteredProducts.forEach((product) => {
                         const productCard = document.createElement('div');
                         productCard.classList.add('product-card');
 
@@ -691,7 +678,7 @@
                     // Event listener untuk tombol beli
                     document.querySelectorAll('.buy-btn').forEach((button) => {
                         button.addEventListener('click', (e) => {
-                            const item_id = button.dataset.id; // Ganti ke item_id
+                            const item_id = button.dataset.id;
                             const productName = button.dataset.name;
                             const productPrice = parseFloat(button.dataset.price);
 
@@ -699,15 +686,36 @@
                                 alert('Silakan login terlebih dahulu untuk membeli barang.');
                                 window.location.href = '/login';
                             } else {
-                                addToCart(item_id, productName, productPrice); // Ganti ke item_id
+                                addToCart(item_id, productName, productPrice);
                             }
                         });
                     });
                 } catch (error) {
-                    console.error('Error loading products:', error);
-                    productCarousel.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
+                    console.error(`Error loading ${productType} products:`, error);
+                    const productSection = document.querySelector(`#${productType}-products .product-carousel`);
+                    if (productSection) {
+                        productSection.innerHTML = `<p>Gagal memuat produk ${productType}. Silakan coba lagi nanti.</p>`;
+                    }
                 }
             };
+
+            // Daftar jenis produk
+            const productTypes = [
+                'PC-Ready',
+                'Processor',
+                'Graphics-Card',
+                'RAM',
+                'Motherboard',
+                'PSU',
+                'Cooling',
+                'Casing',
+                'Storage',
+            ];
+
+            // Muat setiap tipe produk
+            productTypes.forEach((type) => loadProductsByType(type));
+
+
 
             // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {
@@ -738,8 +746,6 @@
                 });
             });
 
-
-    
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');
@@ -787,10 +793,7 @@
             } catch (err) {
                 console.error('Error checking login status:', err);
             }
-    
-            // Muat produk
-            await loadProducts();
-    
+
             // Timer untuk mengganti slide setiap 5 detik
             setInterval(nextSlide, 5000);
         });

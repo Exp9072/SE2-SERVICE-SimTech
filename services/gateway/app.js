@@ -45,10 +45,10 @@ const throttle = (delay) => {
 const ipThrottle = throttle(600); // Batasan per IP (600ms antar permintaan)
 
 // **3. Throttle product**
-const productThrottle = throttle(100); // Batasan lebih longgar untuk produk
+const productThrottle = throttle(50); // Batasan lebih longgar untuk produk
 const productLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 2000, // Maksimal 2000 permintaan per IP dalam 15 menit
+    max: 10000, // Maksimal 10000 permintaan per IP dalam 15 menit
     message: {
         status: 429,
         message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
@@ -57,8 +57,8 @@ const productLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// **3. Throttle product**
-const userThrottle = throttle(200); // Batasan lebih longgar untuk produk
+// **3. Throttle user**
+const userThrottle = throttle(100); // Batasan lebih longgar untuk produk
 const userLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
     max: 2000, // Maksimal 2000 permintaan per IP dalam 15 menit
@@ -75,7 +75,7 @@ app.use(['/auth', '/api/orders', '/api/payments'], globalLimiter);
 app.use(['/api/orders', '/api/payments'], ipThrottle);
 
 // Middleware khusus untuk rute produk
-app.use('/api/products', productLimiter, productThrottle);
+// app.use('/api/products', productLimiter, productThrottle);
 app.use('/auth/user', userLimiter, userThrottle);
 
 // Rute utama untuk Gateway
@@ -211,6 +211,19 @@ app.use('/api/orders',  proxy('http://localhost:3003', {
         return proxyReqOpts;
     },
 }));
+
+app.use('/api/payments', proxy('http://localhost:3004', {
+    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
+        if (!userId) {
+            throw new Error('Missing user-id header. User must be authenticated.');
+        }
+        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
+        return proxyReqOpts;
+    },
+}));
+
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

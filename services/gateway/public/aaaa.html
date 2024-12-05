@@ -3,13 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daftar Pesanan</title>
+    <title>SimTech Gateway</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: fit-content;
             background-color: #f4f4f9;
+            overflow-x: hidden; /* Menghindari scroll horizontal */
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            min-height: fit-content; /* Pastikan setinggi viewport */
+            padding-bottom: 50px; /* Ruang ekstra di bawah */
+        }
+
+
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+            margin-bottom: auto; /* Menempel ke bawah */
         }
 
         header {
@@ -30,69 +58,190 @@
         .brand {
             font-size: 24px;
             font-weight: bold;
-            color: white;
-            text-decoration: none;
-            padding-left: 30px;
+            padding-left: 50px; 
         }
-        
-        header .brand:hover {
-            text-decoration: underline;
-        }
-        
+
         nav {
             display: flex;
             gap: 15px;
             margin-left: auto;
+            
         }
-        
-        header nav a {
+
+        nav a {
             color: white;
             text-decoration: none;
             font-size: 16px;
             padding: 8px 12px;
             border-radius: 5px;
             transition: background-color 0.2s;
+            cursor: pointer;
         }
-        
-        header nav a:hover {
+
+        nav a:hover {
             background-color: #005bb5;
         }
-        
-        header .user-menu {
+
+        .user-menu {
+            position: relative;
             display: flex;
             align-items: center;
+            padding-left: 30px;
+            margin-right: 20px;
         }
-        
-        header .profile-circle {
+
+        .profile-circle {
             width: 40px;
             height: 40px;
             border-radius: 50%;
             object-fit: cover;
+            cursor: pointer;
             border: 2px solid white;
-            margin-left: 15px;
+            transition: transform 0.2s ease;
+        }
+
+        .profile-circle:hover {
+            transform: scale(1.1);
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .dropdown.active {
+            display: block;
+        }
+
+        .dropdown button {
+            background-color: #017cff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .dropdown button:hover {
+            background-color: #005bb5;
+        }
+
+        .ad-slider {
+        position: relative;
+        width: 100%;
+        margin : auto;
+        overflow: visible; /* Hanya menampilkan satu slide pada satu waktu */
+        }
+
+        .slider-container {
+            display: flex;
+            width: 100%; /* Lebar total container adalah 3x jumlah gambar */
+            height: 100%;
+            transition: transform 1s ease-in-out; /* Efek slide */
+        }
+
+        .slider-container img {
+            width: 100%; /* Setiap gambar mengambil 100% lebar slider */
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @keyframes slide {
+            0%, 20% { transform: translateX(0); }
+            25%, 45% { transform: translateX(-100%); }
+            50%, 70% { transform: translateX(-200%); }
+            75%, 95% { transform: translateX(-300%); }
+        }
+
+        .categories {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .categories h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .categories .category {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
             cursor: pointer;
         }
-        
-        h1 {
-            margin: 20px 0;
-            text-align: center;
+
+        .categories .category img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #017cff;
+            margin-bottom: 5px;
         }
 
-        .orders {
-            max-width: 800px;
-            margin: 0 auto;
+        .products {
+            padding: 20px;
+            margin-bottom: 0px;
         }
 
-        .order-item {
+        .products h2 {
+            font-size: 24px;
+        }
+
+        .product-carousel {
+            display: flex;
+            overflow-x: auto;
+            gap: 15px;
+        }
+
+        .product-card {
+            flex: 0 0 200px;
             background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
             padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
         }
 
-        .order-item strong {
-            display: block;
+        .product-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .product-card .price {
+            color: #017cff;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .product-card .description {
+            position: fixed; /* Agar muncul di luar tata letak */
+            background-color: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none; /* Tersembunyi secara default */
+            z-index: 10;
+            width: 300px; /* Atur lebar dropdown */
+            max-width: 90%; /* Membatasi lebar di layar kecil */
+        }
+
+        .product-card {
+            position: relative; /* Menjadikan posisi referensi untuk .description */
         }
 
         .modal {
@@ -107,6 +256,7 @@
             z-index: 1000;
             max-width: 400px;
             border-radius: 8px;
+            text-align: center;
         }
 
         .modal.active {
@@ -114,35 +264,33 @@
         }
 
         .modal h2 {
-            margin-top: 0;
+            margin: 0 0 10px;
         }
 
         .modal .close-btn {
-            background-color: #f44336;
+            background-color: #017cff;
             color: white;
-            padding: 5px 10px;
+            padding: 10px 15px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            margin-top: 10px;
         }
 
-        footer {
-            text-align: center;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f0f0;
-            color: #666;
+        .modal .close-btn:hover {
+            background-color: #005bb5;
         }
     </style>
 </head>
 <body>
     <header>
-        <a href="/" class="brand">SimTech</a>
+        <div class="brand">SimTech</div>
         <nav>
-            <a href="#katalog">Katalog</a>
-            <a href="#pc-ready">PC Ready</a>
-            <a href="#simulasi">Simulasi</a>
-        </nav>
+            <a href="/katalog.html" class="nav-link" data-require-login="false">Katalog</a>
+            <a href="/pc-ready.html" class="nav-link" data-require-login="false">PC Ready</a>
+            <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
+            <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
+        </nav>   
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
             <div id="dropdown-menu" class="dropdown">
@@ -152,125 +300,497 @@
             </div>
         </div>
     </header>
-    <h1>Daftar Pesanan</h1>
-    <div class="orders"></div>
+    <main>
+        <!-- Slider -->
+        <div class="ad-slider">
+            <div class="slider-container">
+                <img src="images/poster1.png" alt="Ad 1">
+                <img src="images/poster2.png" alt="Ad 2">
+                <img src="images/poster3.png" alt="Ad 3">
+            </div>
+        </div>
 
-    <!-- Modal for Order Details -->
-    <div class="modal" id="order-detail-modal">
-        <h2>Detail Barang</h2>
-        <div id="order-detail-content"></div>
-        <button class="close-btn">Tutup</button>
-    </div>
+        <!-- Categories -->
+        <div class="categories">
+            <h2>Shop by Categories</h2>
+            <div class="category" data-target="#pc-ready">
+                <img src="images/pcready1.jpg" alt="PC Ready">
+                <span>PC Ready</span>
+            </div>
+            <div class="category" data-target="#cpu">
+                <img src="images/amd_ryzen_7_7800x3d.jpg" alt="CPU">
+                <span>CPU</span>
+            </div>
+            <div class="category" data-target="#gpu">
+                <img src="images/nvidia_rtx_4090.jpg" alt="GPU">
+                <span>GPU</span>
+            </div>
+            <div class="category" data-target="#ram">
+                <img src="images/gskill_trident_z_royal_64gb.jpg" alt="RAM">
+                <span>RAM</span>
+            </div>
+            <div class="category" data-target="#motherboard">
+                <img src="images/msi_meg_z790_godlike.jpg" alt="Motherboard">
+                <span>Motherboard</span>
+            </div>
+            <div class="category" data-target="#psu">
+                <img src="images/ROG-1600W-PSU.jpeg" alt="PSU">
+                <span>PSU</span>
+            </div>
+            <div class="category" data-target="#cooling">
+                <img src="images/masterliquid-ml360r.jpg" alt="Cooling">
+                <span>Cooling</span>
+            </div>
+            <div class="category" data-target="#storage">
+                <img src="images/storage.jpg" alt="Storage">
+                <span>Storage</span>
+            </div>
+        </div>
+        <div class="modal" id="cart-modal">
+            <h2>Produk Ditambahkan</h2>
+            <div id="cart-modal-content"></div>
+            <button class="close-btn">Tutup</button>
+        </div>
+        
+        <!-- Products -->
+        <div id="pc-ready" class="products">
+            <h2>PC Ready</h2>
+            <div class="product-carousel">
+                <!-- <div class="product-card">
+                    <img src="images/pcready3.jpg" alt="Product 1">
+                    <div class="name">Paket Gaming Standard</div>
+                    <div class="price">Rp 30.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                    <button class="buy-btn" data-product="Paket Gaming Standard">Beli</button>
+                    <div class="description">
+                        <h4>Spesifikasi</h4>
+                        <ul>
+                            <li><strong>Prosesor:</strong> Intel Core i5 Gen 12</li>
+                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 3060</li>
+                            <li><strong>RAM:</strong> 16GB DDR4</li>
+                            <li><strong>Storage:</strong> 512GB SSD</li>
+                            <li><strong>Power Supply:</strong> 500W</li>
+                            <li><strong>Sistem Operasi:</strong> Windows 11 Home</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <img src="images/pcready2.jpg" alt="Product 2">
+                    <div class="name">Paket Gaming Sultan</div>
+                    <div class="price">Rp 80.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                    <div class="description">
+                        <h4>Spesifikasi</h4>
+                        <ul>
+                            <li><strong>Prosesor:</strong> Intel Core i9 Gen 13</li>
+                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 4080</li>
+                            <li><strong>RAM:</strong> 32GB DDR5</li>
+                            <li><strong>Storage:</strong> 1TB SSD NVMe</li>
+                            <li><strong>Power Supply:</strong> 850W Gold Certified</li>
+                            <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <img src="images/pcready1.jpg" alt="Product 3">
+                    <div class="name">Paket Gaming Ultra</div>
+                    <div class="price">Rp 100.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                    <div class="description">
+                        <h4>Spesifikasi</h4>
+                        <ul>
+                            <li><strong>Prosesor:</strong> AMD Ryzen 9 7950X</li>
+                            <li><strong>GPU:</strong> NVIDIA GeForce RTX 4090</li>
+                            <li><strong>RAM:</strong> 64GB DDR5</li>
+                            <li><strong>Storage:</strong> 2TB SSD NVMe</li>
+                            <li><strong>Power Supply:</strong> 1000W Platinum Certified</li>
+                            <li><strong>Sistem Operasi:</strong> Windows 11 Pro</li>
+                        </ul>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+        <div id="cpu" class="products">
+            <h2>CPU</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/cpu1.jpg" alt="CPU 1">
+                    <div class="name">Intel Core i7-12700K</div>
+                    <div class="price">Rp 5.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/cpu2.jpg" alt="CPU 2">
+                    <div class="name">AMD Ryzen 7 5800X3D</div>
+                    <div class="price">Rp 6.500.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/cpu3.jpg" alt="CPU 3">
+                    <div class="name">Intel Core i9-13900K</div>
+                    <div class="price">Rp 8.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="gpu" class="products">
+            <h2>GPU</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/gpu1.jpg" alt="GPU 1">
+                    <div class="name">NVIDIA GeForce RTX 3060 Ti</div>
+                    <div class="price">Rp 6.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/gpu2.jpg" alt="GPU 2">
+                    <div class="name">AMD Radeon RX 6800 XT</div>
+                    <div class="price">Rp 8.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/gpu3.jpg" alt="GPU 3">
+                    <div class="name">NVIDIA GeForce RTX 4090</div>
+                    <div class="price">Rp 30.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
 
+        <div id="ram" class="products">
+            <h2>RAM</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/ram1.jpg" alt="RAM 1">
+                    <div class="name">Corsair Vengeance RGB Pro 16GB (2x8GB)</div>
+                    <div class="price">Rp 1.200.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/ram2.jpg" alt="RAM 2">
+                    <div class="name">G.Skill Trident Z RGB 32GB (2x16GB)</div>
+                    <div class="price">Rp 2.500.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/ram3.jpg" alt="RAM 3">
+                    <div class="name">Kingston Fury Beast 64GB (4x16GB)</div>
+                    <div class="price">Rp 4.800.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="motherboard" class="products">
+            <h2>Motherboard</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/motherboard1.jpg" alt="Motherboard 1">
+                    <div class="name">ASUS ROG STRIX Z690-E</div>
+                    <div class="price">Rp 6.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/motherboard2.jpg" alt="Motherboard 2">
+                    <div class="name">MSI MPG X570 Gaming Edge WiFi</div>
+                    <div class="price">Rp 4.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/motherboard3.jpg" alt="Motherboard 3">
+                    <div class="name">Gigabyte Z790 AORUS Master</div>
+                    <div class="price">Rp 7.500.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="psu" class="products">
+            <h2>PSU</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/psu1.jpg" alt="PSU 1">
+                    <div class="name">Corsair RM750x 750W 80+ Gold</div>
+                    <div class="price">Rp 1.800.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/psu2.jpg" alt="PSU 2">
+                    <div class="name">Seasonic PRIME 850W 80+ Platinum</div>
+                    <div class="price">Rp 3.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/psu3.jpg" alt="PSU 3">
+                    <div class="name">Cooler Master V1000 1000W 80+ Gold</div>
+                    <div class="price">Rp 2.500.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="cooling" class="products">
+            <h2>Cooling</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/cooling1.jpg" alt="Cooling 1">
+                    <div class="name">Cooler Master Hyper 212 RGB</div>
+                    <div class="price">Rp 800.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/cooling2.jpg" alt="Cooling 2">
+                    <div class="name">NZXT Kraken X63 280mm AIO</div>
+                    <div class="price">Rp 3.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/cooling3.jpg" alt="Cooling 3">
+                    <div class="name">Noctua NH-D15 Chromax Black</div>
+                    <div class="price">Rp 2.000.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="storage" class="products">
+            <h2>Storage</h2>
+            <div class="product-carousel">
+                <div class="product-card">
+                    <img src="images/storage1.jpg" alt="Storage 1">
+                    <div class="name">Samsung 970 EVO Plus 1TB NVMe SSD</div>
+                    <div class="price">Rp 2.500.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/storage2.jpg" alt="Storage 2">
+                    <div class="name">Western Digital Black 2TB HDD</div>
+                    <div class="price">Rp 1.200.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+                <div class="product-card">
+                    <img src="images/storage3.jpg" alt="Storage 3">
+                    <div class="name">Seagate BarraCuda 4TB HDD</div>
+                    <div class="price">Rp 1.800.000</div>
+                    <button class="detail-btn">View Details</button>
+                </div>
+            </div>
+        </div>        
+    </main>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
-
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const ordersContainer = document.querySelector('.orders');
-            const modal = document.getElementById('order-detail-modal');
-            const modalContent = document.getElementById('order-detail-content');
-            const closeModalButton = modal.querySelector('.close-btn');
-            const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+            const profilePicture = document.getElementById('profile-picture');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const orderBtn = document.getElementById('order-btn');
+            const productCarousel = document.querySelector('#pc-ready .product-carousel');
+            const cartModal = document.getElementById('cart-modal');
+            const cartModalContent = document.getElementById('cart-modal-content');
+            const closeModalButton = cartModal.querySelector('.close-btn');
+            let isLoggedIn = false;
+    
+            // Slider Logic 
+            const sliderContainer = document.querySelector('.slider-container');
+            const slides = document.querySelectorAll('.slider-container img');
+            const totalSlides = slides.length;
+    
+            let currentIndex = 0;
 
-            if (!userId) {
-                alert('Silakan login terlebih dahulu.');
-                window.location.href = '/login';
-                return;
+            // Fungsi untuk menampilkan modal
+            function showCartModal(productName) {
+                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
+                cartModal.classList.add('active');
             }
 
-            // Load orders
-            try {
-                const response = await fetch('/api/orders', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'user-id': userId,
-                    },
-                });
-
-                const orders = await response.json();
-                if (response.ok && orders.length > 0) {
-                    ordersContainer.innerHTML = orders.map(order => `
-                        <div class="order-item">
-                            <strong>Nomor Pesanan: ${order.order_id}</strong>
-                            <p>Total Harga: Rp ${order.total_price.toLocaleString('id-ID')}</p>
-                            <p>Pembayaran: ${order.payment === 'unpaid' ? 'Belum Dibayar' : 'Sudah Dibayar'}</p>
-                            <p>Status: ${order.status}</p>
-                            <p>Tanggal: ${new Date(order.order_date).toLocaleString('id-ID')}</p>
-                            <button class="detail-btn" data-order-id="${order.order_id}">Lihat Detail Barang</button>
-                            ${order.payment === 'unpaid' ? `
-                                <button class="pay-btn" data-order-id="${order.order_id}">
-                                    Bayar
-                                </button>` : `<p style="color: green;">Pesanan sudah dibayar.</p>`}
-                        </div>
-                    `).join('');
-                } else {
-                    ordersContainer.innerHTML = '<p>Belum ada pesanan.</p>';
-                }
-            } catch (error) {
-                console.error('Error fetching orders:', error);
-                ordersContainer.innerHTML = '<p>Gagal memuat pesanan. Silakan coba lagi nanti.</p>';
-            }
-
-            // Event listener for Detail Barang button
-            document.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('detail-btn')) {
-                    const orderId = e.target.getAttribute('data-order-id');
-
-                    try {
-                        const response = await fetch(`/api/orders/${orderId}/items`, {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'user-id': userId,
-                            },
-                        });
-
-                        const items = await response.json();
-                        if (response.ok && items.length > 0) {
-                            modalContent.innerHTML = items.map(item => `
-                                <p><strong>${item.name}</strong>: ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')}</p>
-                            `).join('');
-                            modal.classList.add('active');
-                        } else {
-                            modalContent.innerHTML = '<p>Detail barang tidak ditemukan.</p>';
-                            modal.classList.add('active');
-                        }
-                    } catch (error) {
-                        console.error('Error fetching order items:', error);
-                        alert('Gagal memuat detail barang.');
-                    }
-                }
-
-                if (e.target.classList.contains('pay-btn')) {
-                    const orderId = e.target.getAttribute('data-order-id');
-                    window.location.href = `pembayaran.html?order_id=${orderId}`;
-                }
-            });
-
-            // Close modal
+            // Fungsi untuk menutup modal
             closeModalButton.addEventListener('click', () => {
-                modal.classList.remove('active');
+                cartModal.classList.remove('active');
+            });
+
+    
+            const updateSliderPosition = () => {
+                const offset = currentIndex * -100; // Perpindahan dalam persen
+                sliderContainer.style.transform = `translateX(${offset}%)`;
+            };
+    
+            const nextSlide = () => {
+                currentIndex = (currentIndex + 1) % totalSlides; // Kembali ke slide pertama setelah terakhir
+                updateSliderPosition();
+            };
+    
+            // Scroll otomatis ke bagian terkait
+            document.querySelectorAll('.category').forEach(category => {
+                category.addEventListener('click', function () {
+                    const target = this.getAttribute('data-target'); // Ambil target dari atribut
+                    if (target) {
+                        const targetElement = document.querySelector(target); // Cari elemen target
+                        if (targetElement) { // Periksa apakah elemen ada
+                            targetElement.scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                            console.error(`Element with target ${target} not found`);
+                        }
+                    } else {
+                        console.error('Category is missing data-target attribute');
+                    }
+                });
+            });
+    
+            // Scroll otomatis untuk nav-link
+            document.querySelectorAll('.scroll-link').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href'); // Ambil ID target
+                    const targetElement = document.querySelector(targetId); // Cari elemen target
+                    if (targetElement) { // Periksa apakah elemen ada
+                        targetElement.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                        console.error(`Element with ID ${targetId} not found`);
+                    }
+                });
+            });
+    
+            // Fungsi untuk memuat produk dari API berdasarkan tipe "PC Ready"
+            const loadProducts = async () => {
+                try {
+                    const response = await fetch('/api/products'); // Panggil endpoint API produk
+                    const products = await response.json();
+
+                    // Filter produk untuk hanya mengambil item_type = "PC Ready"
+                    const pcReadyProducts = products.filter(product => product.item_type === 'PC Ready');
+
+                    if (pcReadyProducts.length === 0) {
+                        productCarousel.innerHTML = '<p>Tidak ada produk PC Ready tersedia.</p>';
+                        return;
+                    }
+
+                    productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
+
+                    // Tambahkan produk ke elemen HTML
+                    pcReadyProducts.forEach((product) => {
+                        const productCard = document.createElement('div');
+                        productCard.classList.add('product-card');
+
+                        productCard.innerHTML = `
+                            <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
+                            <div class="name">${product.item_name}</div>
+                            <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
+                            <button class="detail-btn" data-id="${product.item_id}">View Details</button>
+                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">
+                                Beli
+                            </button>
+                        `;
+
+                        productCarousel.appendChild(productCard);
+                    });
+
+                    // Event listener untuk tombol beli
+                    document.querySelectorAll('.buy-btn').forEach((button) => {
+                        button.addEventListener('click', (e) => {
+                            const item_id = button.dataset.id; // Ganti ke item_id
+                            const productName = button.dataset.name;
+                            const productPrice = parseFloat(button.dataset.price);
+
+                            if (!isLoggedIn) {
+                                alert('Silakan login terlebih dahulu untuk membeli barang.');
+                                window.location.href = '/login';
+                            } else {
+                                addToCart(item_id, productName, productPrice); // Ganti ke item_id
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.error('Error loading products:', error);
+                    productCarousel.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
+                }
+            };
+
+            // Fungsi untuk menambahkan produk ke keranjang beli
+            const addToCart = (item_id, productName, productPrice) => {
+                const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                cart.push({
+                    item_id, // Gunakan item_id sebagai kunci
+                    name: productName,
+                    price: productPrice,
+                    quantity: 1, // Default quantity untuk setiap item
+                });
+                localStorage.setItem('cart', JSON.stringify(cart));
+
+                // Menampilkan modal setelah item ditambahkan ke keranjang
+                const cartModal = document.getElementById('cart-modal');
+                const cartModalContent = document.getElementById('cart-modal-content');
+
+                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
+                cartModal.classList.add('active');
+            };
+
+            // Fungsi untuk menutup modal
+            document.addEventListener('DOMContentLoaded', () => {
+                const cartModal = document.getElementById('cart-modal');
+                const closeModalButton = cartModal.querySelector('.close-btn');
+
+                closeModalButton.addEventListener('click', () => {
+                    cartModal.classList.remove('active');
+                });
             });
 
             try {
+                // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');
                 const data = await response.json();
-
+    
                 if (data.success && data.user) {
-                    const profilePicture = document.getElementById('profile-picture');
+                    isLoggedIn = true;
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
-                    localStorage.setItem('userId', data.user.id);
-                    localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userId', data.user.id); // Simpan userId
+                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
+                    console.log('index-html');
+                    console.log('User-id', data.user.id);
+                    console.log('userEmail',data.user.email);
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'block';
+                    orderBtn.style.display = 'block';
                 } else {
-                    window.location.href = '/login';
+                    profilePicture.src = 'images/default-profile.png';
+                    loginBtn.style.display = 'block';
+                    logoutBtn.style.display = 'none';
+                    orderBtn.style.display = 'block';
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
                 }
-            } catch (error) {
-                console.error('Error fetching user details:', error);
-                window.location.href = '/login';
+    
+                profilePicture.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('active');
+                });
+    
+                loginBtn.addEventListener('click', () => {
+                    window.location.href = '/login';
+                });
+
+                orderBtn.addEventListener('click', () => {
+                    window.location.href = '/orders';
+                });
+    
+                logoutBtn.addEventListener('click', async () => {
+                    await fetch('/logout', { method: 'POST' });
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
+                    window.location.href = '/'; // Redirect ke homepage
+                });
+            } catch (err) {
+                console.error('Error checking login status:', err);
             }
+    
+            // Muat produk
+            await loadProducts();
+    
+            // Timer untuk mengganti slide setiap 5 detik
+            setInterval(nextSlide, 5000);
         });
     </script>
 </body>

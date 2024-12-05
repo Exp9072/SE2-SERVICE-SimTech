@@ -217,10 +217,15 @@
         <div id="order-detail-content"></div>
         <button class="close-btn">Tutup</button>
     </div>
+    <!-- Modal for Payment Details -->
+    <div class="modal" id="payment-detail-modal">
+        <h2>Detail Pembayaran</h2>
+        <div id="payment-detail-content"></div>
+        <button class="close-btn">Tutup</button>
+    </div>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
-
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const ordersContainer = document.querySelector('.orders');
@@ -232,6 +237,9 @@
             const modal = document.getElementById('order-detail-modal');
             const modalContent = document.getElementById('order-detail-content');
             const closeModalButton = modal.querySelector('.close-btn');
+            const paymentModal = document.getElementById('payment-detail-modal');
+            const paymentModalContent = document.getElementById('payment-detail-content');
+            const closePaymentModalButton = paymentModal.querySelector('.close-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
 
             if (!userId) {
@@ -275,6 +283,10 @@
                                 <button class="pay-btn" data-order-id="${order.order_id}">
                                     Bayar
                                 </button>` : `<p style="color: green;">Pesanan sudah dibayar.</p>`}
+                                <button class="payment-detail-btn" data-order-id="${order.order_id}">
+                                    Detail Pembayaran
+                                </button>
+
                         </div>
                     `).join('');
                 } else {
@@ -319,6 +331,47 @@
                     const orderId = e.target.getAttribute('data-order-id');
                     window.location.href = `pembayaran.html?order_id=${orderId}`;
                 }
+            });
+            // Event listener untuk tombol detail pembayaran
+            document.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('payment-detail-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+
+                    try {
+                        const response = await fetch(`/api/payments/${orderId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'user-id': localStorage.getItem('userId'),
+                                'user-email': localStorage.getItem('userEmail'), // Sertakan email
+                            },
+                        });
+
+                        const paymentDetails = await response.json();
+
+                        if (response.ok && paymentDetails) {
+                            paymentModalContent.innerHTML = `
+                                <p><strong>Nomor Pesanan:</strong> ${paymentDetails.order_id}</p>
+                                <p><strong>Metode Pembayaran:</strong> ${paymentDetails.payment_method}</p>
+                                <p><strong>Total Dibayar:</strong> Rp ${paymentDetails.amount.toLocaleString('id-ID')}</p>
+                                <p><strong>Tanggal Pembayaran:</strong> ${new Date(paymentDetails.payment_date).toLocaleString('id-ID')}</p>
+                            `;
+                            paymentModal.classList.add('active');
+                        } else {
+                            paymentModalContent.innerHTML = '<p>Detail pembayaran tidak ditemukan.</p>';
+                            paymentModal.classList.add('active');
+                        }
+                    } catch (error) {
+                        console.error('Error fetching payment details:', error);
+                        alert('Gagal memuat detail pembayaran.');
+                    }
+                }
+            });
+
+
+            // Close payment modal
+            closePaymentModalButton.addEventListener('click', () => {
+                paymentModal.classList.remove('active');
             });
 
             // Close modal

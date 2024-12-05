@@ -85,6 +85,36 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
     }
 });
 
+app.get('/api/payments/:orderId', async (req, res) => {
+    const { orderId } = req.params;
+    const userEmail = req.headers['user-email']; // Ambil email dari header
+
+    if (!userEmail) {
+        console.error('Missing user-email in headers');
+        return res.status(401).json({ message: 'Unauthorized: Missing email in headers.' });
+    }
+
+    try {
+        const [paymentDetails] = await db.query(`
+            SELECT payment_id, order_id, email, payment_method, payment_date, amount
+            FROM payments
+            WHERE order_id = ? AND email = ?
+        `, [orderId, userEmail]);
+
+        if (paymentDetails.length === 0) {
+            return res.status(404).json({ message: 'Detail pembayaran tidak ditemukan.' });
+        }
+
+        res.json(paymentDetails[0]);
+    } catch (error) {
+        console.error('Error fetching payment details:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat mengambil detail pembayaran.' });
+    }
+});
+
+
+
+
 
 // Jalankan Payment Service
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;
