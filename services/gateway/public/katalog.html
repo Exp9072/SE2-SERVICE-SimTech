@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katalog Produk</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            position: sticky; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10000;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            padding-left: 30px;
+        }
+        
+        nav {
+            display: flex;
+            gap: 15px;
+            margin-left: auto;  
+        }
+        header nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        
+        header nav a:hover {
+            background-color: #005bb5;
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .search-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .search-bar input,
+        .search-bar select,
+        .search-bar button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .search-bar button {
+            background-color: #017cff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .search-bar button:hover {
+            background-color: #005bb5;
+        }
+
+        .products {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .product-card {
+            width: calc(33.333% - 10px);
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .product-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+
+        .product-card .name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .product-card .price {
+            color: #017cff;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .user-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            margin-right: 40px;
+        }
+
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.2s ease;
+        }
+
+        .profile-circle:hover {
+            transform: scale(1.1);
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .dropdown.active {
+            display: block;
+        }
+
+        .dropdown button {
+            background-color: #017cff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .dropdown button:hover {
+            background-color: #005bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal h2 {
+            margin: 0 0 10px;
+        }
+
+        .modal .close-btn {
+            background-color: #017cff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .modal .close-btn:hover {
+            background-color: #005bb5;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="brand">SimTech</a>
+        <nav>
+            <a href="/katalog" class="nav-link" data-require-login="false">Katalog</a>
+            <a href="/pc-ready.html" class="nav-link" data-require-login="false">PC Ready</a>
+            <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
+            <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
+        </nav>  
+        <div class="user-menu">
+            <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
+            <div id="dropdown-menu" class="dropdown">
+                <button id="login-btn" style="display: none;">Login</button>
+                <button id="logout-btn" style="display: none;">Logout</button>
+                <button id="order-btn" style="display: none;">Order</button>
+            </div>
+        </div>
+    </header>
+    <main>
+        <div class="search-bar">
+            <select id="type-filter" multiple>
+                <option value="Processor">Processor</option>
+                <option value="Graphics-Card">Graphics Card</option>
+                <option value="RAM">RAM</option>
+                <option value="Motherboard">Motherboard</option>
+                <option value="Storage">Storage</option>
+                <option value="Casing">Casing</option>
+                <option value="PSU">PSU</option>
+                <option value="Cooling">Cooling</option>
+            </select>
+            <input type="number" id="price-min" placeholder="Harga Minimum">
+            <input type="number" id="price-max" placeholder="Harga Maksimum">
+            <button id="search-button">Cari</button>
+        </div>
+        <div class="modal" id="cart-modal">
+            <h2>Produk Ditambahkan</h2>
+            <div id="cart-modal-content"></div>
+            <button class="close-btn">Tutup</button>
+        </div>
+        <div class="products" id="product-container"></div>
+    </main>
+    <footer>
+        <p>&copy; 2024 SimTech</p>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const productContainer = document.getElementById('product-container');
+            const typeFilter = document.getElementById('type-filter');
+            const priceMinInput = document.getElementById('price-min');
+            const priceMaxInput = document.getElementById('price-max');
+            const searchButton = document.getElementById('search-button');
+            const cartModal = document.getElementById('cart-modal');
+            const cartModalContent = document.getElementById('cart-modal-content');
+            const closeModalButton = cartModal.querySelector('.close-btn');
+            const profilePicture = document.getElementById('profile-picture');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const orderBtn = document.getElementById('order-btn');
+            const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+    
+            // Fungsi untuk memuat produk
+            const loadProducts = async (filters = {}) => {
+                try {
+                    const response = await fetch('/api/products');
+                    const products = await response.json();
+    
+                    // Filter produk
+                    const filteredProducts = products.filter(product => {
+                        // Kecualikan PC-Ready
+                        if (product.item_type === 'PC-Ready') return false;
+    
+                        // Filter berdasarkan tipe
+                        if (filters.types && filters.types.length > 0 && !filters.types.includes(product.item_type)) {
+                            return false;
+                        }
+    
+                        // Filter berdasarkan harga
+                        if (filters.minPrice && product.price < filters.minPrice) {
+                            return false;
+                        }
+                        if (filters.maxPrice && product.price > filters.maxPrice) {
+                            return false;
+                        }
+    
+                        return true;
+                    });
+    
+                    // Kosongkan elemen produk
+                    productContainer.innerHTML = '';
+    
+                    // Jika tidak ada produk ditemukan
+                    if (filteredProducts.length === 0) {
+                        productContainer.innerHTML = '<p>Tidak ada produk yang ditemukan.</p>';
+                        return;
+                    }
+    
+                    // Tambahkan produk ke elemen
+                    filteredProducts.forEach(product => {
+                        const productCard = document.createElement('div');
+                        productCard.classList.add('product-card');
+                        productCard.innerHTML = `
+                            <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
+                            <div class="name">${product.item_name}</div>
+                            <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
+                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">
+                                Beli
+                            </button>
+                        `;
+                        productContainer.appendChild(productCard);
+                    });
+    
+                    // Tambahkan event listener untuk tombol beli
+                    document.querySelectorAll('.buy-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const itemId = button.dataset.id;
+                            const productName = button.dataset.name;
+                            const productPrice = parseFloat(button.dataset.price);
+                            addToCart(itemId, productName, productPrice);
+                        });
+                    });
+                } catch (error) {
+                    console.error('Error loading products:', error);
+                    productContainer.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
+                }
+            };
+    
+            // Fungsi untuk menambahkan produk ke keranjang beli
+            const addToCart = (item_id, productName, productPrice) => {
+                const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                cart.push({
+                    item_id, // Gunakan item_id sebagai kunci
+                    name: productName,
+                    price: productPrice,
+                    quantity: 1, // Default quantity untuk setiap item
+                });
+                localStorage.setItem('cart', JSON.stringify(cart));
+    
+                // Menampilkan modal setelah item ditambahkan ke keranjang
+                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
+                cartModal.classList.add('active');
+            };
+    
+            // Event listener untuk menutup modal
+            closeModalButton.addEventListener('click', () => {
+                cartModal.classList.remove('active');
+            });
+    
+            // Event handler untuk tombol cari
+            searchButton.addEventListener('click', () => {
+                const selectedTypes = Array.from(typeFilter.selectedOptions).map(option => option.value);
+                const minPrice = parseInt(priceMinInput.value, 10) || null;
+                const maxPrice = parseInt(priceMaxInput.value, 10) || null;
+    
+                const filters = {
+                    types: selectedTypes,
+                    minPrice,
+                    maxPrice,
+                };
+    
+                loadProducts(filters);
+            });
+    
+            // Muat semua produk pada saat pertama kali
+            loadProducts();
+    
+            try {
+                // Periksa apakah pengguna telah login
+                const response = await fetch('/auth/user');
+                const data = await response.json();
+    
+                if (data.success && data.user) {
+                    isLoggedIn = true;
+                    profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
+                    localStorage.setItem('userId', data.user.id); // Simpan userId
+                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
+                    loginBtn.style.display = 'none';
+                    logoutBtn.style.display = 'block';
+                    orderBtn.style.display = 'block';
+                } else {
+                    profilePicture.src = 'images/default-profile.png';
+                    loginBtn.style.display = 'block';
+                    logoutBtn.style.display = 'none';
+                    orderBtn.style.display = 'block';
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
+                }
+    
+                profilePicture.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('active');
+                });
+    
+                loginBtn.addEventListener('click', () => {
+                    window.location.href = '/login';
+                });
+    
+                orderBtn.addEventListener('click', () => {
+                    window.location.href = '/orders';
+                });
+    
+                logoutBtn.addEventListener('click', async () => {
+                    await fetch('/logout', { method: 'POST' });
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
+                    window.location.href = '/'; // Redirect ke homepage
+                });
+            } catch (err) {
+                console.error('Error checking login status:', err);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -100,6 +100,10 @@ app.get('/payment', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'pembayaran.html'));
 });
 
+app.get('/katalog', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'katalog.html'));
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
