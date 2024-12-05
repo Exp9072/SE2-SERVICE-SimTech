@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Katalog Produk</title>
+    <title>PC Ready</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -34,89 +34,141 @@
             text-decoration: none;
             padding-left: 30px;
         }
-        
+
         nav {
             display: flex;
             gap: 15px;
             margin-left: auto;  
         }
-        
+
         header nav a {
             color: white;
             text-decoration: none;
-            font-size: 16px;
-            padding: 8px 12px;
-            border-radius: 5px;
-            transition: background-color 0.2s;
+            margin-left: 20px;
         }
-        
+
         header nav a:hover {
-            background-color: #005bb5;
-        }
-        
-        main {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 20px;
+            text-decoration: underline;
         }
 
         .search-bar {
+            margin: 20px auto;
+            max-width: 800px;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
-        .search-bar input,
-        .search-bar select,
-        .search-bar button {
+        .search-bar select, .search-bar input, .search-bar button {
             padding: 10px;
             font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            margin-right: 10px;
         }
 
         .search-bar button {
             background-color: #017cff;
             color: white;
             cursor: pointer;
+            transition: background-color 0.2s ease;
         }
 
         .search-bar button:hover {
             background-color: #005bb5;
         }
 
-        .products {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
+        .product-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
         }
 
         .product-card {
-            width: calc(33.333% - 10px);
             background-color: white;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            padding: 15px;
+            padding: 20px;
             text-align: center;
         }
 
         .product-card img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            margin-bottom: 10px;
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 15px;
         }
 
         .product-card .name {
-            font-size: 18px;
             font-weight: bold;
+            margin-bottom: 10px;
         }
 
         .product-card .price {
             color: #017cff;
-            font-weight: bold;
-            margin: 10px 0;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .product-card button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #017cff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .product-card button:hover {
+            background-color: #005bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
+        }
+
+        /* Modal CSS */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            max-width: 400px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .modal.active {
+            display: block;
+        }
+
+        .modal h2 {
+            margin: 0 0 10px;
+        }
+
+        .modal .close-btn {
+            background-color: #017cff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .modal .close-btn:hover {
+            background-color: #005bb5;
         }
 
         .user-menu {
@@ -171,51 +223,6 @@
         .dropdown button:hover {
             background-color: #005bb5;
         }
-
-        footer {
-            text-align: center;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f0f0;
-            color: #666;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            z-index: 1000;
-            max-width: 400px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .modal.active {
-            display: block;
-        }
-
-        .modal h2 {
-            margin: 0 0 10px;
-        }
-
-        .modal .close-btn {
-            background-color: #017cff;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .modal .close-btn:hover {
-            background-color: #005bb5;
-        }
     </style>
 </head>
 <body>
@@ -236,32 +243,28 @@
             </div>
         </div>
     </header>
-    <main>
-        <div class="search-bar">
-            <select id="type-filter" multiple>
-                <option value="Processor">Processor</option>
-                <option value="Graphics-Card">Graphics Card</option>
-                <option value="RAM">RAM</option>
-                <option value="Motherboard">Motherboard</option>
-                <option value="Storage">Storage</option>
-                <option value="Casing">Casing</option>
-                <option value="PSU">PSU</option>
-                <option value="Cooling">Cooling</option>
-            </select>
-            <input type="number" id="price-min" placeholder="Harga Minimum">
-            <input type="number" id="price-max" placeholder="Harga Maksimum">
-            <button id="search-button">Cari</button>
-        </div>
-        <div class="modal" id="cart-modal">
-            <h2>Produk Ditambahkan</h2>
-            <div id="cart-modal-content"></div>
-            <button class="close-btn">Tutup</button>
-        </div>
-        <div class="products" id="product-container"></div>
-    </main>
+    <div class="search-bar">
+        <select id="type-filter" multiple>
+            <option value="PC-Ready">PC-Ready</option>
+        </select>
+        <input type="number" id="price-min" placeholder="Harga Minimum">
+        <input type="number" id="price-max" placeholder="Harga Maksimum">
+        <button id="search-button">Cari</button>
+    </div>
+    <div class="modal" id="cart-modal">
+        <h2>Produk Ditambahkan</h2>
+        <div id="cart-modal-content"></div>
+        <button class="close-btn">Tutup</button>
+    </div>
+    <div id="product-container" class="product-container"></div>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
+    <!-- Modal -->
+    <div class="modal" id="cart-modal">
+        <div id="cart-modal-content"></div>
+        <button class="close-btn">Tutup</button>
+    </div>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const productContainer = document.getElementById('product-container');
@@ -278,23 +281,17 @@
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
-    
+
             // Fungsi untuk memuat produk
             const loadProducts = async (filters = {}) => {
                 try {
                     const response = await fetch('/api/products');
                     const products = await response.json();
-    
-                    // Filter produk
+
+                    // Filter produk hanya PC-Ready
                     const filteredProducts = products.filter(product => {
-                        // Kecualikan PC-Ready
-                        if (product.item_type === 'PC-Ready') return false;
-    
-                        // Filter berdasarkan tipe
-                        if (filters.types && filters.types.length > 0 && !filters.types.includes(product.item_type)) {
-                            return false;
-                        }
-    
+                        if (product.item_type !== 'PC-Ready') return false;
+
                         // Filter berdasarkan harga
                         if (filters.minPrice && product.price < filters.minPrice) {
                             return false;
@@ -302,19 +299,19 @@
                         if (filters.maxPrice && product.price > filters.maxPrice) {
                             return false;
                         }
-    
+
                         return true;
                     });
-    
+
                     // Kosongkan elemen produk
                     productContainer.innerHTML = '';
-    
+
                     // Jika tidak ada produk ditemukan
                     if (filteredProducts.length === 0) {
                         productContainer.innerHTML = '<p>Tidak ada produk yang ditemukan.</p>';
                         return;
                     }
-    
+
                     // Tambahkan produk ke elemen
                     filteredProducts.forEach(product => {
                         const productCard = document.createElement('div');
@@ -323,20 +320,13 @@
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
                             <div class="name">${product.item_name}</div>
                             <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
-                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">
-                                Beli
-                            </button>
+                            <button>Beli</button>
                         `;
                         productContainer.appendChild(productCard);
-                    });
-    
-                    // Tambahkan event listener untuk tombol beli
-                    document.querySelectorAll('.buy-btn').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            const itemId = button.dataset.id;
-                            const productName = button.dataset.name;
-                            const productPrice = parseFloat(button.dataset.price);
-                            addToCart(itemId, productName, productPrice);
+
+                        // Tambahkan event listener untuk tombol beli
+                        productCard.querySelector('button').addEventListener('click', () => {
+                            addToCart(product.item_id, product.item_name, product.price);
                         });
                     });
                 } catch (error) {
@@ -344,46 +334,34 @@
                     productContainer.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
                 }
             };
-    
+
             // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                cart.push({
-                    item_id, // Gunakan item_id sebagai kunci
-                    name: productName,
-                    price: productPrice,
-                    quantity: 1, // Default quantity untuk setiap item
-                });
+                cart.push({ item_id, name: productName, price: productPrice, quantity: 1 });
                 localStorage.setItem('cart', JSON.stringify(cart));
-    
-                // Menampilkan modal setelah item ditambahkan ke keranjang
+
+                // Tampilkan modal
                 cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
                 cartModal.classList.add('active');
             };
-    
-            // Event listener untuk menutup modal
+
+            // Tutup modal
             closeModalButton.addEventListener('click', () => {
                 cartModal.classList.remove('active');
             });
-    
+
             // Event handler untuk tombol cari
             searchButton.addEventListener('click', () => {
-                const selectedTypes = Array.from(typeFilter.selectedOptions).map(option => option.value);
                 const minPrice = parseInt(priceMinInput.value, 10) || null;
                 const maxPrice = parseInt(priceMaxInput.value, 10) || null;
-    
-                const filters = {
-                    types: selectedTypes,
-                    minPrice,
-                    maxPrice,
-                };
-    
+
+                const filters = { minPrice, maxPrice };
                 loadProducts(filters);
             });
-    
-            // Muat semua produk pada saat pertama kali
+
+            // Muat semua produk PC-Ready saat halaman dimuat
             loadProducts();
-    
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');

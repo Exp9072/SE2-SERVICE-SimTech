@@ -104,6 +104,10 @@ app.get('/katalog', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'katalog.html'));
 });
 
+app.get('/pc-ready', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'PcReady.html'));
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
