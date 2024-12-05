@@ -60,33 +60,37 @@
     <script>
         // Form Login with Email and Password
         document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        e.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-            try {
-                const response = await fetch('http://localhost:3000/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email, password }),
-                });
+        try {
+            const response = await fetch('http://localhost:3000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    alert('Login successful!');
-                    sessionStorage.setItem('user', JSON.stringify(data.user)); // Simpan user ke sesi
-                    window.location.href = '/'; // Redirect to homepage
-                } else {
-                    alert('Login failed. Please check your credentials.');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                alert('An error occurred. Please try again.');
+            if (response.ok) {
+                const data = await response.json();
+                alert('Login successful!');
+                localStorage.setItem('userId', data.user.id); // Simpan userId ke localStorage
+                localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
+                console.log('login-html');
+                console.log('User-id', data.user.id);
+                console.log('userEmail',data.user.email);
+                window.location.href = '/'; // Redirect to homepage
+            } else {
+                alert('Login failed. Please check your credentials.');
             }
-        });
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('An error occurred. Please try again.');
+        }
+    });
     </script>
 </body>
 </html>

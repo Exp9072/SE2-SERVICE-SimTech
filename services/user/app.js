@@ -108,10 +108,12 @@ passport.deserializeUser(async (id, done) => {
 
 // Endpoint to get authenticated user
 app.get('/auth/user', (req, res) => {
+    console.log('Authenticated User:', req.user); // Debugging
     if (req.isAuthenticated() && req.user) {
         res.json({
             success: true,
             user: {
+                id: req.user.id,
                 name: req.user.name || 'User',
                 email: req.user.email,
                 profilePicture: req.user.profile_picture || '/default-profile.png',
@@ -121,6 +123,7 @@ app.get('/auth/user', (req, res) => {
         res.json({ success: false, user: null });
     }
 });
+
 
 // Google OAuth Endpoint
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

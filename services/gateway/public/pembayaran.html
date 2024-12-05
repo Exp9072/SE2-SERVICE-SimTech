@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keranjang Belanja</title>
+    <title>Pembayaran</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,7 +11,7 @@
             padding: 0;
             background-color: #f4f4f9;
         }
-        
+
         header {
             display: flex;
             justify-content: space-between;
@@ -32,11 +32,10 @@
             font-weight: bold;
             color: white;
             text-decoration: none;
-            padding-left: 30px;
         }
 
         header .brand:hover {
-            text-decoration: underline; /* Efek hover opsional */
+            text-decoration: underline;
         }
 
         nav {
@@ -45,7 +44,7 @@
             margin-left: auto;
             
         }
-
+        
         header nav a {
             color: white;
             text-decoration: none;
@@ -54,16 +53,16 @@
             border-radius: 5px;
             transition: background-color 0.2s;
         }
-
+        
         header nav a:hover {
             background-color: #005bb5;
         }
-
+        
         header .user-menu {
             display: flex;
             align-items: center;
         }
-
+        
         header .profile-circle {
             width: 40px;
             height: 40px;
@@ -74,45 +73,57 @@
             cursor: pointer;
         }
 
-        h1 {
+        main {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        main h1 {
             text-align: center;
+        }
+
+        form {
             margin-top: 20px;
         }
 
-        .cart-items {
-            margin: 20px auto;
-            max-width: 800px;
-        }
-
-        .cart-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: white;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .cart-item .name {
-            font-weight: bold;
-        }
-
-        .checkout-btn {
+        form label {
             display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
+            margin-bottom: 5px;
+        }
+
+        form input, form select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        form button {
+            width: 100%;
+            padding: 10px;
             background-color: #017cff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            text-align: center;
+            font-size: 16px;
         }
 
-        .checkout-btn:hover {
+        form button:hover {
             background-color: #005bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            color: #666;
         }
 
         .user-menu {
@@ -167,14 +178,6 @@
         .dropdown button:hover {
             background-color: #005bb5;
         }
-
-        footer {
-            text-align: center;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f0f0f0;
-            color: #666;
-        }
     </style>
 </head>
 <body>
@@ -185,7 +188,7 @@
             <a href="/pc-ready" class="nav-link" data-require-login="false">PC Ready</a>
             <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
             <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
-        </nav> 
+        </nav>  
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
             <div id="dropdown-menu" class="dropdown">
@@ -195,100 +198,83 @@
             </div>
         </div>
     </header>
-    <h1>Keranjang Belanja</h1>
-    <div class="cart-items"></div>
-    <button class="checkout-btn">Checkout</button>
+    <main>
+        <h1>Pembayaran</h1>
+        <form id="payment-form">
+            <label for="order-id">Nomor Pesanan</label>
+            <input type="text" id="order-id" name="order-id" readonly>
+
+            <label for="payment-method">Metode Pembayaran</label>
+            <select id="payment-method" name="payment-method" required>
+                <option value="">Pilih Metode</option>
+                <option value="credit-card">Kartu Kredit</option>
+                <option value="bank-transfer">Transfer Bank</option>
+                <option value="ewallet">E-Wallet</option>
+            </select>
+
+            <button type="submit">Bayar Sekarang</button>
+        </form>
+    </main>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const cartItemsContainer = document.querySelector('.cart-items');
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('order_id');
+            const orderIdInput = document.getElementById('order-id');
             const profilePicture = document.getElementById('profile-picture');
             const dropdownMenu = document.getElementById('dropdown-menu');
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
-
-            console.log('User ID:', userId); // Debugging: pastikan userId yang benar digunakan
-            console.log('Cart items:', cart); // Debugging
-
+            
             if (!userId) {
                 alert('Silakan login terlebih dahulu.');
                 window.location.href = '/login';
                 return;
             }
-
-            let totalPrice = 0;
-
-            if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
+            
+            if (orderId) {
+                orderIdInput.value = orderId;
             } else {
-                cart.forEach((item, index) => {
-                    const cartItem = document.createElement('div');
-                    cartItem.classList.add('cart-item');
-                    const price = item.price ? `Rp ${item.price.toLocaleString()}` : 'Tidak tersedia';
-                    totalPrice += item.price;
-
-                    cartItem.innerHTML = `
-                        <div>
-                            <span class="name">${item.name}</span><br>
-                            <span class="price">Harga: ${price}</span>
-                        </div>
-                        <button class="remove-btn" data-index="${index}">Hapus</button>
-                    `;
-                    cartItemsContainer.appendChild(cartItem);
-                });
-
-                const totalPriceElement = document.createElement('div');
-                totalPriceElement.classList.add('total-price');
-                totalPriceElement.innerHTML = `
-                    <strong>Total Harga: Rp <span>${totalPrice.toLocaleString()}</span></strong>
-                `;
-                cartItemsContainer.appendChild(totalPriceElement);
+                alert('Nomor pesanan tidak ditemukan.');
+                window.location.href = '/orders';
             }
-
-            document.querySelectorAll('.remove-btn').forEach((button) => {
-                button.addEventListener('click', (event) => {
-                    const index = event.target.getAttribute('data-index');
-                    cart.splice(index, 1);
-                    localStorage.setItem('cart', JSON.stringify(cart));
-                    window.location.reload();
-                });
-            });
-
-            document.querySelector('.checkout-btn').addEventListener('click', async () => {
-                if (cart.length === 0) {
-                    alert('Keranjang Anda kosong.');
+            const paymentForm = document.getElementById('payment-form');
+            paymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const paymentMethod = document.getElementById('payment-method').value;
+                if (!paymentMethod) {
+                    alert('Silakan pilih metode pembayaran.');
                     return;
                 }
-
                 try {
-                    const response = await fetch('/api/orders', {
+                    const response = await fetch(`/api/payments`, {
                         method: 'POST',
-                        headers: {
+                        headers: { 
                             'Content-Type': 'application/json',
-                            'user-id': userId, // Pastikan userId diteruskan
+                            'user-id': localStorage.getItem('userId'), // Tambahkan user-id
                         },
-                        body: JSON.stringify({ items: cart }),
+                        body: JSON.stringify({ 
+                            orderId: orderId, 
+                            paymentMethod: paymentMethod,
+                        }),
                     });
-
                     const result = await response.json();
-
                     if (response.ok) {
-                        alert('Pesanan berhasil dibuat! Nomor pesanan Anda: ' + result.orderId);
-                        localStorage.removeItem('cart'); // Kosongkan keranjang setelah checkout
-                        window.location.href = '/orders'; // Redirect ke halaman daftar pesanan
+                        alert('Pembayaran berhasil!');
+                        window.location.href = '/orders';
                     } else {
-                        alert(`Gagal membuat pesanan: ${result.message}`);
+                        alert(`Gagal melakukan pembayaran: ${result.message}`);
                     }
                 } catch (error) {
-                    console.error('Error during checkout:', error);
-                    alert('Terjadi kesalahan saat membuat pesanan.');
+                    console.error('Error processing payment:', error);
+                    alert('Terjadi kesalahan saat memproses pembayaran.');
                 }
             });
+
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');
