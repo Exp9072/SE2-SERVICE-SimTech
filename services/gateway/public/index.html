@@ -675,20 +675,36 @@
                         productCarousel.appendChild(productCard);
                     });
 
+                    const debounce = (func, delay) => {
+                        let timer; 
+                        return (...args) =>{
+                            clearTimeout(timer);
+                            timer = setTimeout(() => func.apply(this, args), delay);
+                        };
+                    };
+
                     // Event listener untuk tombol beli
                     document.querySelectorAll('.buy-btn').forEach((button) => {
-                        button.addEventListener('click', (e) => {
-                            const item_id = button.dataset.id;
-                            const productName = button.dataset.name;
-                            const productPrice = parseFloat(button.dataset.price);
+                        if (!button.dataset.listenerAdded) {
+                            button.addEventListener(
+                                'click',
+                                debounce((e) => {
+                                    const item_id = button.dataset.id;
+                                    const productName = button.dataset.name;
+                                    const productPrice = parseFloat(button.dataset.price);
 
-                            if (!isLoggedIn) {
-                                alert('Silakan login terlebih dahulu untuk membeli barang.');
-                                window.location.href = '/login';
-                            } else {
-                                addToCart(item_id, productName, productPrice);
-                            }
-                        });
+                                    if (!isLoggedIn) {
+                                        alert('Silakan login terlebih dahulu untuk membeli barang.');
+                                        window.location.href = '/login';
+                                    } else {
+                                        addToCart(item_id, productName, productPrice);
+                                    }
+                                }, 300)
+                            );
+
+                            // Tandai bahwa listener sudah ditambahkan
+                            button.dataset.listenerAdded = 'true';
+                        }
                     });
                 } catch (error) {
                     console.error(`Error loading ${productType} products:`, error);
@@ -714,8 +730,6 @@
 
             // Muat setiap tipe produk
             productTypes.forEach((type) => loadProductsByType(type));
-
-
 
             // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {

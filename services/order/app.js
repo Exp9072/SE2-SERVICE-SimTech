@@ -9,6 +9,12 @@ const app = express();
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
+// Tangani error global di seluruh proses
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    process.exit(1);
+});
+
 // Koneksi ke database
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -16,6 +22,52 @@ const db = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: 'simtech',
 });
+
+const { connectRabbitMQ, getRabbitChannel } = require('../../rabbitmq/rabbitmq');
+
+// Hubungkan RabbitMQ saat layanan mulai
+connectRabbitMQ()
+    .then(async () => {
+        const channel = getRabbitChannel();
+
+        // Konsumsi pesan dari queue
+        await channel.assertQueue('payment_queue');
+        channel.consume('payment_queue', async (message) => {
+            if (message) {
+                let paymentData;
+                try {
+                    paymentData = JSON.parse(message.content.toString());
+                } catch (error) {
+                    console.error('Invalid message format:', error);
+                    channel.nack(message, false, false); // Tolak pesan jika format tidak valid
+                    return;
+                }
+        
+                if (!paymentData.orderId || !paymentData.paymentMethod) {
+                    console.error('Invalid message content:', paymentData);
+                    channel.nack(message, false, false); // Tolak pesan jika data tidak lengkap
+                    return;
+                }
+        
+                try {
+                    await db.query(
+                        'UPDATE orders SET status = "sedang dikemas" WHERE order_id = ?',
+                        [paymentData.orderId]
+                    );
+                    console.log(`Order ${paymentData.orderId} status updated.`);
+                    channel.ack(message);
+                } catch (error) {
+                    console.error('Error updating order status:', error);
+                    channel.nack(message); // Kembalikan pesan ke queue
+                }
+            }
+        });
+        
+    })
+    .catch((error) => {
+        console.error('Error setting up RabbitMQ consumer:', error);
+    });
+
 
 // Middleware untuk memverifikasi pengguna
 async function authenticateUser(req, res, next) {
@@ -149,7 +201,17 @@ app.get('/api/orders/:orderId/items', authenticateUser, async (req, res) => {
     }
 });
 
-
+app.get('/test-rabbit', async (req, res) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('test_queue');
+        channel.sendToQueue('test_queue', Buffer.from('Hello RabbitMQ!'));
+        res.status(200).json({ message: 'Pesan berhasil dikirim ke RabbitMQ.' });
+    } catch (error) {
+        console.error('RabbitMQ test failed:', error);
+        res.status(500).json({ message: 'RabbitMQ test failed.', error: error.message });
+    }
+});
 
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;

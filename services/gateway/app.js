@@ -75,6 +75,7 @@ app.use(['/auth', '/api/orders', '/api/payments'], globalLimiter);
 app.use(['/api/orders', '/api/payments'], ipThrottle);
 
 // Middleware khusus untuk rute produk
+// JANGAN LUPA OIII
 // app.use('/api/products', productLimiter, productThrottle);
 app.use('/auth/user', userLimiter, userThrottle);
 
@@ -144,7 +145,6 @@ app.use('/auth/google/callback',  proxy('http://localhost:3001', {
     },
 }));
 
-
 // Proxy untuk GitHub OAuth
 app.use('/auth/github',  proxy('http://localhost:3001', {
     proxyReqPathResolver: () => '/auth/github',
@@ -206,7 +206,6 @@ app.use('/api/payments',  proxy('http://localhost:3004', {
     },
 }));
 
-
 app.use('/api/orders',  proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => {
         return req.originalUrl;
@@ -219,19 +218,6 @@ app.use('/api/orders',  proxy('http://localhost:3003', {
         return proxyReqOpts;
     },
 }));
-
-app.use('/api/payments', proxy('http://localhost:3004', {
-    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
-        if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
-        }
-        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
-        return proxyReqOpts;
-    },
-}));
-
 
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

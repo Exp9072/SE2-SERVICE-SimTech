@@ -9,6 +9,16 @@ const app = express();
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
+// Tangani error global di seluruh proses
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled rejection:', reason, 'at', promise);
+});
+
 // Koneksi ke database
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -42,48 +52,73 @@ async function authenticateUser(req, res, next) {
     }
 }
 
+const { connectRabbitMQ, getRabbitChannel } = require('../../rabbitmq/rabbitmq');
+
+// Hubungkan RabbitMQ saat layanan mulai
+connectRabbitMQ();
+
 // Endpoint untuk melakukan pembayaran
-app.post('/api/payments', authenticateUser, async (req, res) => {
-    const { orderId, paymentMethod } = req.body;
+app.post('/api/payments', async (req, res) => {
+    const { orderId, paymentMethod} = req.body;
+    const userEmail = req.headers['user-email'];
+    console.log("Order Id :", orderId);
+    console.log("Payment Method :", paymentMethod);
+    console.log("User Email :", userEmail);
+    
 
     if (!orderId || !paymentMethod) {
-        console.error('Invalid payment request:', req.body); // Debugging
         return res.status(400).json({ message: 'Order ID dan metode pembayaran diperlukan.' });
     }
 
     try {
-        console.log(`Processing payment for order ID: ${orderId}, Payment Method: ${paymentMethod}`); // Debugging
-        
-        // Periksa apakah pesanan ada dan belum dibayar
         const [order] = await db.query(
             'SELECT * FROM orders WHERE order_id = ? AND email = ? AND payment = "unpaid"',
-            [orderId, req.userEmail]
+            [orderId, req.headers['user-email']]
         );
 
         if (order.length === 0) {
-            console.error('Order not found or already paid:', orderId); // Debugging
             return res.status(404).json({ message: 'Pesanan tidak ditemukan atau sudah dibayar.' });
         }
 
-        // Update status pembayaran dan pesanan
+        // Tambahkan logika untuk memeriksa apakah pesan sudah dikirim sebelumnya
+        const [existingPayment] = await db.query(
+            'SELECT * FROM payments WHERE order_id = ?',
+            [orderId]
+        );
+
+        if (existingPayment.length > 0) {
+            return res.status(400).json({ message: 'Pembayaran untuk pesanan ini sudah diproses.' });
+        }
+
         await db.query(
-            'UPDATE orders SET payment = ?, status = "sedang dikirim" WHERE order_id = ?',
+            'UPDATE orders SET payment = ?, status = "sedang dikemas" WHERE order_id = ?',
             ['paid', orderId]
         );
 
-        // Simpan record pembayaran di tabel payments
         await db.query(
             'INSERT INTO payments (order_id, email, payment_method, amount) VALUES (?, ?, ?, ?)',
-            [orderId, req.userEmail, paymentMethod, order[0].total_price]
+            [orderId, req.headers['user-email'], paymentMethod, order[0].total_price]
         );
 
-        console.log(`Payment successful for order ID: ${orderId}`); // Debugging
-        res.status(200).json({ message: 'Pembayaran berhasil.', orderId });
+        const paymentData = {
+            orderId,
+            paymentMethod,
+            amount: order[0].total_price,
+            paymentDate: new Date().toISOString(),
+        };
+
+        const channel = getRabbitChannel();
+        await channel.assertQueue('payment_queue');
+        channel.sendToQueue('payment_queue', Buffer.from(JSON.stringify(paymentData)));
+
+        console.log('Payment message sent to RabbitMQ:', paymentData);
+        res.status(200).json({ message: 'Pembayaran berhasil.', paymentData });
     } catch (error) {
-        console.error('Error processing payment:', error); // Debugging
+        console.error('Error processing payment:', error);
         res.status(500).json({ message: 'Terjadi kesalahan saat memproses pembayaran.' });
     }
 });
+
 
 app.get('/api/payments/:orderId', async (req, res) => {
     const { orderId } = req.params;
@@ -112,9 +147,30 @@ app.get('/api/payments/:orderId', async (req, res) => {
     }
 });
 
+// Debugging
+app.get('/api/rabbitmq-test', async (req, res) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('test_queue');
+        channel.sendToQueue('test_queue', Buffer.from('Test message'));
+        res.status(200).json({ message: 'Message sent to test_queue.' });
+    } catch (error) {
+        console.error('RabbitMQ test failed:', error);
+        res.status(500).json({ message: 'RabbitMQ test failed.', error: error.message });
+    }
+});
 
-
-
+app.get('/test-rabbit', async (req, res) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('test_queue');
+        channel.sendToQueue('test_queue', Buffer.from('Hello RabbitMQ!'));
+        res.status(200).json({ message: 'Pesan berhasil dikirim ke RabbitMQ.' });
+    } catch (error) {
+        console.error('RabbitMQ test failed:', error);
+        res.status(500).json({ message: 'RabbitMQ test failed.', error: error.message });
+    }
+});
 
 // Jalankan Payment Service
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;

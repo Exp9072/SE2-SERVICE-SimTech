@@ -1,92 +1,52 @@
-// Proxy untuk Logout
-app.use(throttle(500), '/logout', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/logout',
-}));
+const { connectRabbitMQ, getRabbitChannel } = require('./rabbitmq');
 
-// Proxy untuk Register
-app.use(throttle(500), '/register', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/register',
-}));
+// Hubungkan RabbitMQ saat layanan mulai
+connectRabbitMQ();
 
-// Proxy untuk Google OAuth
-app.use(throttle(500), '/auth/google', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/auth/google',
-}));
+// Endpoint untuk melakukan pembayaran
+app.post('/api/payments', async (req, res) => {
+    const { orderId, paymentMethod } = req.body;
 
-app.use(throttle(500), '/auth/google/callback', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/auth/google/callback',
-    userResDecorator: (proxyRes, proxyResData, req, res) => {
-        console.log('Proxying Google OAuth callback response:', proxyRes.statusCode);
-        console.log('Status code:', proxyres.statusCode);
-        console.log('Response Header:', proxyRes.headers);
-        const redirectLocation = proxyRes.headers['location']; // Ambil lokasi redirect
-        if (proxyRes.statusCode === 302 && redirectLocation) {
-            console.log('Redirecting to:', redirectLocation);
-            res.redirect(redirectLocation); // Redirect pengguna
-            return;
+    if (!orderId || !paymentMethod) {
+        return res.status(400).json({ message: 'Order ID dan metode pembayaran diperlukan.' });
+    }
+
+    try {
+        const [order] = await db.query(
+            'SELECT * FROM orders WHERE order_id = ? AND email = ? AND payment = "unpaid"',
+            [orderId, req.headers['user-email']]
+        );
+
+        if (order.length === 0) {
+            return res.status(404).json({ message: 'Pesanan tidak ditemukan atau sudah dibayar.' });
         }
-        console.log('Redirecting gagal');
-        return proxyResData; // Pastikan data tetap diteruskan
-    },
-}));
 
-// Proxy untuk GitHub OAuth
-app.use(throttle(500), '/auth/github', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/auth/github',
-}));
+        await db.query(
+            'UPDATE orders SET payment = ?, status = "sedang dikemas" WHERE order_id = ?',
+            ['paid', orderId]
+        );
 
-app.use(throttle(500), '/auth/github/callback', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/auth/github/callback',
-    userResDecorator: (proxyRes, proxyResData, req, res) => {
-        console.log('Proxying GitHub OAuth callback response:', proxyRes.statusCode);
-        console.log('Status code:', proxyres.statusCode);
-        console.log('Response Header:', proxyRes.headers);
-        const redirectLocation = proxyRes.headers['location']; // Ambil lokasi redirect
-        if (proxyRes.statusCode === 302 && redirectLocation) {
-            console.log('Redirecting to:', redirectLocation);
-            res.redirect(redirectLocation); // Redirect pengguna
-            return;
-        }
-        return proxyResData; // Pastikan data tetap diteruskan
-    },
-}));
+        await db.query(
+            'INSERT INTO payments (order_id, email, payment_method, amount) VALUES (?, ?, ?, ?)',
+            [orderId, req.headers['user-email'], paymentMethod, order[0].total_price]
+        );
 
-app.use(throttle(500), '/auth/user', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/auth/user',
-}));
+        const paymentData = {
+            orderId,
+            paymentMethod,
+            amount: order[0].total_price,
+            paymentDate: new Date().toISOString(),
+        };
 
-// Proxy untuk Login
-app.use(throttle(500), '/login', proxy('http://localhost:3001', {
-    proxyReqPathResolver: () => '/login',
-}));
+        // Kirim pesan ke RabbitMQ
+        const channel = getRabbitChannel();
+        await channel.assertQueue('payment_queue');
+        channel.sendToQueue('payment_queue', Buffer.from(JSON.stringify(paymentData)));
 
-// Proxy untuk Product Service
-app.use(throttle(500), '/api/products', proxy('http://localhost:3002', {
-    proxyReqPathResolver: (req) => req.originalUrl,
-}));
-
-// Proxy untuk Order Service
-app.use(throttle(500), '/api/orders', proxy('http://localhost:3003', {
-    proxyReqPathResolver: (req) => req.originalUrl,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
-        if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
-        }
-        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan Order
-        return proxyReqOpts;
-    },
-}));
-
-// Proxy untuk Payment Service
-app.use(throttle(500), '/api/payments', proxy('http://localhost:3004', {
-    proxyReqPathResolver: (req) => req.originalUrl, // Teruskan URL asli
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id']; // Ambil user-id dari header permintaan
-        if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
-        }
-        proxyReqOpts.headers['user-id'] = userId; // Teruskan user-id ke layanan pembayaran
-        return proxyReqOpts;
-    },
-}));
+        console.log('Payment message sent to RabbitMQ:', paymentData);
+        res.status(200).json({ message: 'Pembayaran berhasil.', paymentData });
+    } catch (error) {
+        console.error('Error processing payment:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat memproses pembayaran.' });
+    }
+});
