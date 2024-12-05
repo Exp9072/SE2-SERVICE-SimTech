@@ -4,6 +4,8 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
+const amqp = require('amqplib');
+
 const app = express();
 
 // Database Connection
@@ -17,6 +19,95 @@ const db = mysql.createPool({
 // Middleware
 app.use(morgan('dev'));
 app.use(express.json());
+
+// fungsionalitas rabbit mq
+// RabbitMQ connection variables
+const amqpUrl = 'amqp://localhost';
+
+// Queue name to send messages to
+const productQueue = 'products';
+
+let connection, productChannel;
+
+// Function to initialize RabbitMQ connection and channel
+async function initRabbitMQ() {
+  try {
+    // Create a single RabbitMQ connection 
+    connection = await amqp.connect(amqpUrl);
+
+    // make channel
+    productChannel = await connection.createChannel();
+
+    // Assert queue (ensure it exists)
+    await productChannel.assertQueue(productQueue, { durable: false });
+
+    console.log('RabbitMQ connection established');
+  } catch (error) {
+    console.error('Error connecting to RabbitMQ:', error);
+    process.exit(1); // Exit process if RabbitMQ connection fails
+  }
+}
+
+/**
+ * Receives messages from a RabbitMQ queue.
+ * @param {string} queue - The name of the queue to receive messages from.
+ * @param {function} callback - A callback function to process each received message.
+ */
+async function receiveMessage(queue, callback) {
+    try {
+      // Choose the appropriate channel
+      const channel = queue === productQueue ? productChannel : productChannel;
+        console.log('listening for queue: ', queue); // debugging juga
+        console.log('product channel is alive? ', channel !== undefined); // debugging juga
+        
+      // only engage if channel exist   
+      if (channel !== undefined) {
+        // Consume messages from the queue
+        await channel.consume(queue, (msg) => {
+            if (msg !== null) {
+            const messageContent = msg.content.toString();
+            console.log(`Message received from ${queue}:`, messageContent); // debugging lol
+    
+            // Call the provided callback to process the message
+            callback(JSON.parse(messageContent));
+    
+            // Acknowledge the message
+            channel.ack(msg);
+            }
+        });
+      }
+      
+      console.log(`Listening for messages on ${queue}...`);
+    } catch (error) {
+      console.error(`Error receiving messages from ${queue}:`, error);
+    }
+}
+
+async function reduceProductStock(msg) {
+    const connectionSql = await db.getConnection();
+    await connectionSql.query(
+        'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+        [msg.quantity, msg.itemId]
+    );
+    console.log('berhasil update stock barang untuk id barang: ', msg.itemId); // debugging lol
+}
+
+// Function to initialize RabbitMQ and then start listening for messages
+async function startRabbitMQListeners() {
+    try {
+      await initRabbitMQ(); // Ensure RabbitMQ is initialized before proceeding
+  
+      receiveMessage(productQueue,reduceProductStock);
+      console.log(`[RabbitMQ] product services mendengarkan channel/queue products`); // Debugging message
+    
+  
+    } catch (error) {
+      console.error('Error during RabbitMQ setup or listener initialization:', error);
+    }
+  }
+  
+// Call the function to start RabbitMQ and listeners
+startRabbitMQListeners();  
 
 // Endpoint untuk mendapatkan semua produk
 app.get('/api/products', async (req, res) => {

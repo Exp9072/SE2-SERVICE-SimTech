@@ -5,6 +5,8 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
+const amqp = require('amqplib');
+
 const app = express();
 app.use(bodyParser.json());
 app.use(morgan('dev'));
@@ -38,6 +40,121 @@ async function authenticateUser(req, res, next) {
         res.status(500).json({ message: 'Internal server error.' });
     }
 }
+
+// fungsionalitas rabbit mq
+// RabbitMQ connection variables
+const amqpUrl = 'amqp://localhost';
+const paymentQueue = 'payments'; // Queue name to send messages to
+const productQueue = 'products';
+
+let connection, paymentChannel, productChannel;
+
+// Function to initialize RabbitMQ connection and channel
+async function initRabbitMQ() {
+  try {
+    // Create a single RabbitMQ connection 
+    connection = await amqp.connect(amqpUrl);
+
+    // make both channel
+    paymentChannel = await connection.createChannel();
+    productChannel = await connection.createChannel();
+
+    // Assert queue (ensure it exists)
+    await paymentChannel.assertQueue(paymentQueue, { durable: false });
+    await productChannel.assertQueue(productQueue, { durable: false });
+
+    console.log('inside initrabbitmq(), payment channel is alive? ', paymentChannel !== undefined);
+    
+
+    console.log('RabbitMQ connection established');
+  } catch (error) {
+    console.error('Error connecting to RabbitMQ:', error);
+    process.exit(1); // Exit process if RabbitMQ connection fails
+  }
+}
+
+/**
+ * Sends a message to a RabbitMQ queue.
+ * @param {string} queue - The name of the queue to send the message to.
+ * @param {object|string} message - The message to send. It will be serialized to JSON if an object.
+ */
+async function sendMessage(queue, message) {
+    try {
+      // Serialize the message to JSON if it's an object
+      const messageToSend = typeof message === 'object' ? JSON.stringify(message) : message;
+  
+      // Choose the appropriate channel
+      const channel = queue === paymentQueue ? paymentChannel : productChannel;
+  
+      // Send the message to the queue
+      channel.sendToQueue(queue, Buffer.from(messageToSend));
+  
+      console.log(`Message sent to ${queue}:`, messageToSend);
+    } catch (error) {
+      console.error(`Error sending message to ${queue}:`, error);
+    }   
+}
+
+/**
+ * Receives messages from a RabbitMQ queue.
+ * @param {string} queue - The name of the queue to receive messages from.
+ * @param {function} callback - A callback function to process each received message.
+ */
+async function receiveMessage(queue, callback) {
+    try {
+      // Choose the appropriate channel
+      const channel = queue === paymentQueue ? paymentChannel : productChannel;
+        console.log('listening for queue: ', queue); // debugging juga
+        console.log('channel is alive? ', channel !== undefined); // debugging juga
+        
+        
+      // only engage if channel exist   
+      if (channel !== undefined) {
+        // Consume messages from the queue
+        await channel.consume(queue, (msg) => {
+            if (msg !== null) {
+            const messageContent = msg.content.toString();
+            console.log(`Message received from ${queue}:`, messageContent); // debugging lol
+    
+            // Call the provided callback to process the message
+            callback(JSON.parse(messageContent));
+    
+            // Acknowledge the message
+            channel.ack(msg);
+            }
+        });
+      }
+      
+      console.log(`Listening for messages on ${queue}...`);
+    } catch (error) {
+      console.error(`Error receiving messages from ${queue}:`, error);
+    }
+}
+
+async function changeOrderStatus(msg) {
+    await db.query(
+        'UPDATE orders SET payment = ?, status = "sedang dikirim" WHERE order_id = ?',
+        ['paid', msg.orderId]
+    );
+    console.log("berhasil ganti status jadi paid"); // debugging lol
+}
+
+// Function to initialize RabbitMQ and then start listening for messages
+async function startRabbitMQListeners() {
+    try {
+      await initRabbitMQ(); // Ensure RabbitMQ is initialized before proceeding
+  
+      receiveMessage(paymentQueue, changeOrderStatus);
+      console.log(`[RabbitMQ] order services mendengarkan channel/queue payments`); // Debugging message
+    
+  
+    } catch (error) {
+      console.error('Error during RabbitMQ setup or listener initialization:', error);
+    }
+  }
+  
+// Call the function to start RabbitMQ and listeners
+startRabbitMQListeners();  
 
 // Endpoint untuk membuat pesanan baru
 app.post('/api/orders', authenticateUser, async (req, res) => {
@@ -77,11 +194,23 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
 
             totalPrice += pricePerUnit * item.quantity;
 
+            // gw komen, cek kode dan komen dibawahnya
             // Kurangi stok barang
-            await connection.query(
-                'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
-                [item.quantity, item.item_id]
-            );
+            // await connection.query(
+            //     'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+            //     [item.quantity, item.item_id]
+            // );
+
+            // disini rabbitmq mengirim message ke channel 'products'
+            // dan service product mendengarkan channel tersebut.
+            // yang mengurangi stock produk adalah
+            // service product dengan fungsi async reduceProductStock().
+            // message berisikan quantity dan id produk tersebut.
+            const message = {
+              quantity: item.quantity, 
+              itemId: item.item_id
+            };
+            sendMessage(productQueue, message)
         }
 
         const [orderResult] = await connection.query(
