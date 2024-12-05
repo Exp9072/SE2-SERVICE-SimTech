@@ -57,12 +57,26 @@ const productLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// **3. Throttle product**
+const userThrottle = throttle(200); // Batasan lebih longgar untuk produk
+const userLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 menit
+    max: 2000, // Maksimal 2000 permintaan per IP dalam 15 menit
+    message: {
+        status: 429,
+        message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Middleware global hanya untuk API tertentu
 app.use(['/auth', '/api/orders', '/api/payments'], globalLimiter);
-app.use(['/auth', '/api/orders', '/api/payments'], ipThrottle);
+app.use(['/api/orders', '/api/payments'], ipThrottle);
 
 // Middleware khusus untuk rute produk
 app.use('/api/products', productLimiter, productThrottle);
+app.use('/auth/user', userLimiter, userThrottle);
 
 // Rute utama untuk Gateway
 app.get('/', (req, res) => {

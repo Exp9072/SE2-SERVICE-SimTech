@@ -71,6 +71,12 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
             ['paid', orderId]
         );
 
+        // Simpan record pembayaran di tabel payments
+        await db.query(
+            'INSERT INTO payments (order_id, email, payment_method, amount) VALUES (?, ?, ?, ?)',
+            [orderId, req.userEmail, paymentMethod, order[0].total_price]
+        );
+
         console.log(`Payment successful for order ID: ${orderId}`); // Debugging
         res.status(200).json({ message: 'Pembayaran berhasil.', orderId });
     } catch (error) {
@@ -78,6 +84,7 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
         res.status(500).json({ message: 'Terjadi kesalahan saat memproses pembayaran.' });
     }
 });
+
 
 // Jalankan Payment Service
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;

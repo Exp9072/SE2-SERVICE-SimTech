@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 04, 2024 at 11:40 AM
+-- Generation Time: Dec 05, 2024 at 05:09 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -101,9 +101,9 @@ CREATE TABLE `orders` (
 --
 
 INSERT INTO `orders` (`order_id`, `email`, `order_date`, `total_price`, `payment`, `status`) VALUES
-(1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'unpaid', 'belum dikirim'),
+(1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'paid', 'sedang dikirim'),
 (2, 'jodyislami103@gmail.com', '2024-12-04 15:27:17', 45699860.00, 'paid', 'sedang dikirim'),
-(3, 'jodyislami103@gmail.com', '2024-12-04 17:06:41', 74784720.00, 'unpaid', 'belum dikirim');
+(3, 'jodyislami103@gmail.com', '2024-12-04 17:06:41', 74784720.00, 'paid', 'sedang dikirim');
 
 -- --------------------------------------------------------
 
@@ -133,6 +133,29 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price`) 
 (22, 3, 11, 1, 14985000.00),
 (23, 3, 10, 1, 45699860.00),
 (24, 3, 9, 1, 14099860.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payments`
+--
+
+CREATE TABLE `payments` (
+  `payment_id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `payment_method` varchar(50) NOT NULL,
+  `payment_date` datetime DEFAULT current_timestamp(),
+  `amount` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `payments`
+--
+
+INSERT INTO `payments` (`payment_id`, `order_id`, `email`, `payment_method`, `payment_date`, `amount`) VALUES
+(1, 3, 'jodyislami103@gmail.com', 'bank-transfer', '2024-12-05 11:00:17', 74784720.00),
+(2, 1, 'jodyislami103@gmail.com', 'ewallet', '2024-12-05 11:09:05', 99999999.99);
 
 -- --------------------------------------------------------
 
@@ -188,6 +211,13 @@ ALTER TABLE `order_items`
   ADD KEY `product_id` (`product_id`);
 
 --
+-- Indexes for table `payments`
+--
+ALTER TABLE `payments`
+  ADD PRIMARY KEY (`payment_id`),
+  ADD KEY `order_id` (`order_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -217,6 +247,12 @@ ALTER TABLE `order_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
+-- AUTO_INCREMENT for table `payments`
+--
+ALTER TABLE `payments`
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
@@ -232,6 +268,12 @@ ALTER TABLE `users`
 ALTER TABLE `order_items`
   ADD CONSTRAINT `order_items_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `order_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `items` (`item_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `payments`
+--
+ALTER TABLE `payments`
+  ADD CONSTRAINT `payments_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
