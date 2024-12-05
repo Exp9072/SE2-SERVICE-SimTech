@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 05, 2024 at 06:55 AM
+-- Generation Time: Dec 05, 2024 at 03:04 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.0.28
 
@@ -46,16 +46,16 @@ CREATE TABLE `items` (
 --
 
 INSERT INTO `items` (`item_id`, `item_name`, `item_type`, `brand`, `model`, `price`, `stock_quantity`, `image_url`, `socket_type`, `ram_type`, `pci_version`) VALUES
-(1, 'Intel Core i9-11900K', 'Processor', 'Intel', 'i9-11900K', 6999860, 10, 'image/intel_i9_11900k.jpg', 'LGA1200', NULL, NULL),
-(2, 'AMD Ryzen 7 5800X', 'Processor', 'AMD', '5800X', 6299860, 15, 'image/amd_ryzen_7_5800x.jpg', 'AM4', NULL, NULL),
-(3, 'NVIDIA GeForce RTX 3080', 'Graphics-Card', 'NVIDIA', 'RTX 3080', 9799860, 5, 'image/nvidia_rtx_3080.jpg', NULL, NULL, 4.0),
+(1, 'Intel Core i9-11900K', 'Processor', 'Intel', 'i9-11900K', 6999860, 5, 'image/intel_i9_11900k.jpg', 'LGA1200', NULL, NULL),
+(2, 'AMD Ryzen 7 5800X', 'Processor', 'AMD', '5800X', 6299860, 10, 'image/amd_ryzen_7_5800x.jpg', 'AM4', NULL, NULL),
+(3, 'NVIDIA GeForce RTX 3080', 'Graphics-Card', 'NVIDIA', 'RTX 3080', 9799860, 4, 'image/nvidia_rtx_3080.jpg', NULL, NULL, 4.0),
 (4, 'AMD Radeon RX 6800 XT', 'Graphics-Card', 'AMD', 'RX 6800 XT', 9099860, 7, 'image/amd_rx_6800_xt.jpg', NULL, NULL, 4.0),
 (5, 'Corsair Vengeance LPX 16GB', 'RAM', 'Corsair', 'Vengeance LPX', 1259860, 20, 'image/corsair_vengeance_lpx_16gb.jpg', NULL, 'DDR4', NULL),
-(6, 'G.Skill Trident Z RGB 32GB', 'RAM', 'G.Skill', 'Trident Z RGB', 2519860, 25, 'image/gskill_trident_z_rgb_32gb.jpg', NULL, 'DDR4', NULL),
+(6, 'G.Skill Trident Z RGB 32GB', 'RAM', 'G.Skill', 'Trident Z RGB', 2519860, 24, 'image/gskill_trident_z_rgb_32gb.jpg', NULL, 'DDR4', NULL),
 (7, 'ASUS ROG Strix B550-F', 'Motherboard', 'ASUS', 'ROG Strix B550-F', 2799860, 8, 'image/asus_rog_strix_b550_f.jpg', 'AM4', 'DDR4', 4.0),
 (8, 'MSI MPG B550 Gaming Edge WiFi', 'Motherboard', 'MSI', 'MPG B550', 2800000, 8, 'image/msi_mpg_b550_gaming_edge_wifi.jpg', 'AM4', 'DDR4', 4.0),
-(9, 'Paket Sultan', 'PC-Ready', 'LAPEER', 'PaketSultan', 14099860, 5, 'image/pcready1.jpg', NULL, NULL, NULL),
-(10, 'Paket Gaming', 'PC-Ready', 'LAPEER', 'PaketGaming', 45699860, 8, 'image/pcready2.jpg', NULL, NULL, NULL),
+(9, 'Paket Sultan', 'PC-Ready', 'LAPEER', 'PaketSultan', 14099860, 2, 'image/pcready1.jpg', NULL, NULL, NULL),
+(10, 'Paket Gaming', 'PC-Ready', 'LAPEER', 'PaketGaming', 45699860, 7, 'image/pcready2.jpg', NULL, NULL, NULL),
 (11, 'Paket Starter', 'PC-Ready', 'LAPEER', 'PaketStarter', 14985000, 8, 'image/pcready3.jpg', NULL, NULL, NULL),
 (12, 'ASUS Prime Z490-A', 'Motherboard', 'ASUS', 'Prime Z490-A', 3299860, 5, 'image/asus_prime_z490_a.jpg', 'LGA1200', 'DDR4', 4.0),
 (13, 'Gigabyte Z790 Aorus Elite AX', 'Motherboard', 'Gigabyte', 'Z790 Aorus Elite AX', 5604000, 12, 'image/gigabyte_z790_aorus_elite_ax.jpg', 'LGA1700', 'DDR5', 5.0),
@@ -127,7 +127,11 @@ CREATE TABLE `orders` (
 INSERT INTO `orders` (`order_id`, `email`, `order_date`, `total_price`, `payment`, `status`) VALUES
 (1, 'jodyislami103@gmail.com', '2024-12-04 14:26:22', 114784520.00, 'paid', 'sedang dikirim'),
 (2, 'jodyislami103@gmail.com', '2024-12-04 15:27:17', 45699860.00, 'paid', 'sedang dikirim'),
-(3, 'jodyislami103@gmail.com', '2024-12-04 17:06:41', 74784720.00, 'paid', 'sedang dikirim');
+(3, 'jodyislami103@gmail.com', '2024-12-04 17:06:41', 74784720.00, 'paid', 'sedang dikirim'),
+(4, 'jodyislami103@gmail.com', '2024-12-05 13:32:34', 46899020.00, 'paid', 'sedang dikirim'),
+(5, 'jodyislami103@gmail.com', '2024-12-05 13:57:04', 55599300.00, 'paid', 'sedang dikirim'),
+(6, 'jodyislami103@gmail.com', '2024-12-05 20:39:02', 18619580.00, 'paid', ''),
+(7, 'jodyislami103@gmail.com', '2024-12-05 20:56:23', 45699860.00, 'paid', '');
 
 -- --------------------------------------------------------
 
@@ -156,7 +160,23 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `quantity`, `price`) 
 (21, 2, 10, 1, 45699860.00),
 (22, 3, 11, 1, 14985000.00),
 (23, 3, 10, 1, 45699860.00),
-(24, 3, 9, 1, 14099860.00);
+(24, 3, 9, 1, 14099860.00),
+(25, 4, 1, 1, 6999860.00),
+(26, 4, 2, 1, 6299860.00),
+(27, 4, 1, 1, 6999860.00),
+(28, 4, 2, 1, 6299860.00),
+(29, 4, 1, 1, 6999860.00),
+(30, 4, 1, 1, 6999860.00),
+(31, 4, 2, 1, 6299860.00),
+(32, 5, 9, 1, 14099860.00),
+(33, 5, 9, 1, 14099860.00),
+(34, 5, 1, 1, 6999860.00),
+(35, 5, 2, 1, 6299860.00),
+(36, 5, 9, 1, 14099860.00),
+(37, 6, 3, 1, 9799860.00),
+(38, 6, 6, 1, 2519860.00),
+(39, 6, 2, 1, 6299860.00),
+(40, 7, 10, 1, 45699860.00);
 
 -- --------------------------------------------------------
 
@@ -179,7 +199,11 @@ CREATE TABLE `payments` (
 
 INSERT INTO `payments` (`payment_id`, `order_id`, `email`, `payment_method`, `payment_date`, `amount`) VALUES
 (1, 3, 'jodyislami103@gmail.com', 'bank-transfer', '2024-12-05 11:00:17', 74784720.00),
-(2, 1, 'jodyislami103@gmail.com', 'ewallet', '2024-12-05 11:09:05', 99999999.99);
+(2, 1, 'jodyislami103@gmail.com', 'ewallet', '2024-12-05 11:09:05', 99999999.99),
+(3, 4, 'jodyislami103@gmail.com', 'ewallet', '2024-12-05 13:34:00', 46899020.00),
+(4, 5, 'jodyislami103@gmail.com', 'bank-transfer', '2024-12-05 13:57:11', 55599300.00),
+(5, 7, 'jodyislami103@gmail.com', 'credit-card', '2024-12-05 21:00:28', 45699860.00),
+(6, 6, 'jodyislami103@gmail.com', 'bank-transfer', '2024-12-05 21:00:37', 18619580.00);
 
 -- --------------------------------------------------------
 
@@ -262,19 +286,19 @@ ALTER TABLE `items`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
