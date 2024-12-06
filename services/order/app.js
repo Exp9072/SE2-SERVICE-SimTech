@@ -23,7 +23,8 @@ const db = mysql.createPool({
     database: 'simtech',
 });
 
-const { connectRabbitMQ, getRabbitChannel } = require('../../rabbitmq/rabbitmq');
+const { connectRabbitMQ, getRabbitChannel } = require('./rabbitmq/rabbitmq');
+
 
 // Hubungkan RabbitMQ saat layanan mulai
 connectRabbitMQ()
@@ -284,4 +285,4 @@ app.post('/api/orders/cart', authenticateUser, async (req, res) => {
 
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
-app.listen(PORT, () => console.log(`Order service running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Order service running on port ${PORT}`));

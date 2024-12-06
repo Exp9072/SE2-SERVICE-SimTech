@@ -52,7 +52,8 @@ async function authenticateUser(req, res, next) {
     }
 }
 
-const { connectRabbitMQ, getRabbitChannel } = require('../../rabbitmq/rabbitmq');
+const { connectRabbitMQ, getRabbitChannel } = require('./rabbitmq/rabbitmq');
+
 
 // Hubungkan RabbitMQ saat layanan mulai
 connectRabbitMQ();
@@ -219,4 +220,4 @@ app.get('/test-rabbit', async (req, res) => {
 
 // Jalankan Payment Service
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;
-app.listen(PORT, () => console.log(`Payment service running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Payment service running on port ${PORT}`));

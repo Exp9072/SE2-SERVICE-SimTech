@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    container_name: rabbitmq
+  rabbitmq-helper:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - rabbitmq
+  gateway:
+    build:
+      context: ./services/gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - order
+      - payment
+      - product
+      - user
+  order:
+    build:
+      context: ./services/order
+    ports:
+      - "3003:3003"
+    depends_on:
+      - rabbitmq
+  payment:
+    build:
+      context: ./services/payment
+    ports:
+      - "3004:3004"
+    depends_on:
+      - rabbitmq
+  product:
+    build:
+      context: ./services/product
+    ports:
+      - "3002:3002"
+  user:
+    build:
+      context: ./services/user
+    ports:
+      - "3001:3001"
