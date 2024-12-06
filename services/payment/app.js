@@ -147,6 +147,51 @@ app.get('/api/payments/:orderId', async (req, res) => {
     }
 });
 
+app.post('/api/payments/cancel/:orderId', async (req, res) => {
+    const { orderId } = req.params;
+    const userEmail = req.headers['user-email'];
+
+    if (!orderId || !userEmail) {
+        return res.status(400).json({ message: 'Order ID dan email diperlukan.' });
+    }
+
+    try {
+        // Pastikan pembayaran belum selesai
+        const [order] = await db.query(
+            'SELECT * FROM orders WHERE order_id = ? AND email = ? AND payment = "unpaid"',
+            [orderId, userEmail]
+        );
+
+        if (order.length === 0) {
+            return res.status(404).json({ message: 'Pesanan tidak ditemukan atau sudah diproses.' });
+        }
+
+        // Kembalikan stok barang
+        const [orderItems] = await db.query(
+            'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
+            [orderId]
+        );
+
+        for (const item of orderItems) {
+            await db.query(
+                'UPDATE items SET stock_quantity = stock_quantity + ? WHERE item_id = ?',
+                [item.quantity, item.product_id]
+            );
+        }
+
+        // Hapus pembayaran dan set status pesanan
+        await db.query('DELETE FROM payments WHERE order_id = ?', [orderId]);
+        await db.query('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+        await db.query('DELETE FROM orders WHERE order_id = ?', [orderId]);
+
+        res.status(200).json({ message: 'Pembayaran dibatalkan dan stok berhasil dikembalikan.' });
+    } catch (error) {
+        console.error('Error canceling payment:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat membatalkan pembayaran.', error: error.message });
+    }
+});
+
+
 // Debugging
 app.get('/api/rabbitmq-test', async (req, res) => {
     try {

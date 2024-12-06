@@ -186,7 +186,7 @@
         <nav>
             <a href="/katalog" class="nav-link" data-require-login="false">Katalog</a>
             <a href="/pc-ready" class="nav-link" data-require-login="false">PC Ready</a>
-            <a href="/simulasi.html" class="nav-link" data-require-login="true">Simulasi</a>
+            <a href="/simulasi" class="nav-link" data-require-login="true">Simulasi</a>
             <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
         </nav>  
         <div class="user-menu">
@@ -213,6 +213,8 @@
             </select>
 
             <button type="submit">Bayar Sekarang</button>
+            <button type="button" id="cancel-payment-btn" style="background-color: #f44336;">Batalkan Pembayaran</button>
+
         </form>
     </main>
     <footer>
@@ -275,6 +277,33 @@
                     alert('Terjadi kesalahan saat memproses pembayaran.');
                 }
             });
+
+            document.getElementById('cancel-payment-btn').addEventListener('click', async () => {
+                if (confirm('Apakah Anda yakin ingin membatalkan pembayaran ini?')) {
+                    try {
+                        const response = await fetch(`/api/payments/cancel/${orderId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'user-id': userId,
+                                'user-email': localStorage.getItem('userEmail'),
+                            },
+                        });
+
+                        const result = await response.json();
+                        if (response.ok) {
+                            alert('Pembayaran berhasil dibatalkan dan stok telah dikembalikan.');
+                            window.location.href = '/orders';
+                        } else {
+                            alert(`Gagal membatalkan pembayaran: ${result.message}`);
+                        }
+                    } catch (error) {
+                        console.error('Error canceling payment:', error);
+                        alert('Terjadi kesalahan saat membatalkan pembayaran.');
+                    }
+                }
+            });
+
 
             try {
                 // Periksa apakah pengguna telah login

@@ -109,6 +109,10 @@ app.get('/pc-ready', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'PcReady.html'));
 });
 
+app.get('/simulasi', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'simulasi.html'));
+});
+
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
@@ -207,6 +211,20 @@ app.use('/api/payments',  proxy('http://localhost:3004', {
 }));
 
 app.use('/api/orders',  proxy('http://localhost:3003', {
+    proxyReqPathResolver: (req) => {
+        return req.originalUrl;
+    },
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];
+        if (userId) {
+            proxyReqOpts.headers['user-id'] = userId;
+        }
+        return proxyReqOpts;
+    },
+}));
+
+// Proxy untuk keranjang di Order Service
+app.use('/api/orders/cart',  proxy('http://localhost:3003', {
     proxyReqPathResolver: (req) => {
         return req.originalUrl;
     },

@@ -213,6 +213,75 @@ app.get('/test-rabbit', async (req, res) => {
     }
 });
 
+app.post('/api/orders/cart', authenticateUser, async (req, res) => {
+    const { items } = req.body;
+    const email = req.userEmail; // Ambil email pengguna dari middleware
+
+    if (!items || items.length === 0) {
+        return res.status(400).json({ message: 'Keranjang barang tidak boleh kosong.' });
+    }
+
+    try {
+        const connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        console.log('Items received for cart:', items);
+
+        let totalPrice = 0;
+
+        for (const item of items) {
+            if (!item.id || !item.price) {
+                throw new Error(`Item tidak valid: ${JSON.stringify(item)}`);
+            }
+
+            const [rows] = await connection.query(
+                'SELECT price, stock_quantity FROM items WHERE item_id = ?',
+                [item.id]
+            );
+
+            if (rows.length === 0) {
+                throw new Error(`Produk dengan ID ${item.id} tidak ditemukan.`);
+            }
+
+            const { price: pricePerUnit, stock_quantity: stock } = rows[0];
+
+            if (stock < 1) { // Anggap default quantity = 1
+                throw new Error(`Stok tidak cukup untuk produk ID ${item.id}.`);
+            }
+
+            totalPrice += pricePerUnit;
+        }
+
+        // Buat pesanan baru dengan status 'cart'
+        const [orderResult] = await connection.query(
+            'INSERT INTO orders (email, order_date, total_price, payment, status) VALUES (?, NOW(), ?, "unpaid", "cart")',
+            [email, totalPrice]
+        );
+
+        const orderId = orderResult.insertId;
+
+        // Masukkan item ke tabel order_items
+        for (const item of items) {
+            await connection.query(
+                'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
+                [orderId, item.id, 1, item.price] // Default quantity = 1
+            );
+        }
+
+        await connection.commit();
+        connection.release();
+
+        res.status(201).json({
+            message: 'Barang berhasil ditambahkan ke keranjang.',
+            orderId,
+            totalPrice,
+        });
+    } catch (error) {
+        console.error('Error processing cart:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat memproses keranjang.', error: error.message });
+    }
+});
+
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
 app.listen(PORT, () => console.log(`Order service running on port ${PORT}`));
