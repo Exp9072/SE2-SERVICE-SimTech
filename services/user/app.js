@@ -5,11 +5,25 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const path = require('path');
 const mysql = require('mysql2/promise');
+const fetch = require('node-fetch'); // Tambahkan untuk customFetch
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 app.use(express.json());
-app.use(session({ secret: 'simtech-secret', resave: false, saveUninitialized: true }));
+app.set('trust proxy', true); // Percayai proksi pertama (ngrok)
+app.use(
+    session({
+        secret: 'simtech-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+        },
+    })
+);
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -89,27 +103,90 @@ passport.use(
 
 // Serialize and Deserialize User
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+    console.log('Serialize User:', user); // Debugging
+    done(null, {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profile_picture,
+    });
 });
 
-passport.deserializeUser(async (id, done) => {
+passport.deserializeUser(async (user, done) => {
+    console.log('Deserialize User:', user); // Debugging
+
     try {
+        // Ambil hanya ID dari parameter
+        const { id } = user;
+
+        // Perbaiki query untuk hanya mengambil berdasarkan ID
         const [rows] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
+
         if (rows.length > 0) {
             const user = rows[0];
+            console.log('Deserialized User:', user); // Debugging
             done(null, user);
         } else {
+            console.log('User not found in database');
             done(null, null);
         }
     } catch (error) {
+        console.error('Error in deserialize:', error);
         done(error, null);
     }
 });
 
+
+// Middleware untuk memeriksa header tambahan
+app.use((req, res, next) => {
+    const userId = req.headers['user-id'];
+    const userEmail = req.headers['user-email'];
+
+    if (userId) {
+        console.log('Header User ID:', userId); // Debugging
+    }
+    if (userEmail) {
+        console.log('Header User Email:', userEmail); // Debugging
+    }
+
+    next();
+});
+
+// Variabel global untuk menyimpan data login Google
+const LOGIN_GOOGLE = [];
+
+// Wrapper untuk fetch dengan header tambahan
+async function customFetch(url, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    return fetch(url, {
+        ...options,
+        headers,
+    });
+}
+
 // Endpoint to get authenticated user
 app.get('/auth/user', (req, res) => {
     console.log('Authenticated User:', req.user); // Debugging
-    if (req.isAuthenticated() && req.user) {
+    console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging LOGIN_GOOGLE
+
+    if (LOGIN_GOOGLE.length > 0) {
+        // Jika LOGIN_GOOGLE memiliki data, gunakan data dari LOGIN_GOOGLE
+        const latestGoogleUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
+        res.json({
+            success: true,
+            user: {
+                id: latestGoogleUser.id,
+                name: latestGoogleUser.name || 'User',
+                email: latestGoogleUser.email,
+                profilePicture: latestGoogleUser.profilePicture || '/default-profile.png',
+            },
+        });
+    } else if (req.isAuthenticated() && req.user) {
+        // Jika LOGIN_GOOGLE kosong, gunakan data dari req.user
         res.json({
             success: true,
             user: {
@@ -120,6 +197,7 @@ app.get('/auth/user', (req, res) => {
             },
         });
     } else {
+        // Jika tidak ada data dari LOGIN_GOOGLE dan req.user
         res.json({ success: false, user: null });
     }
 });
@@ -133,9 +211,26 @@ app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://192.168.0.5:8080/');
+        console.log('Google Authentication Successful:', req.user); // Debugging
+        console.log('Session after Google Login:', req.session); // Debugging sesi
+        // Simpan data user ke variabel LOGIN_GOOGLE
+        LOGIN_GOOGLE.push({
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
+            profilePicture: req.user.profile_picture,
+        });
+
+        console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging
+        const userData = encodeURIComponent(JSON.stringify(req.user));
+        res.redirect(`http://192.168.0.5:8080?user=${userData}`);
     }
 );
+
+// Endpoint untuk mengirim data LOGIN_GOOGLE ke frontend
+app.get('/auth/google/data', (req, res) => {
+    res.json(LOGIN_GOOGLE);
+});
 
 // GitHub OAuth Endpoint
 app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
@@ -156,16 +251,28 @@ app.post('/logout', (req, res) => {
             console.error('Error during logout:', err);
             return res.status(500).json({ success: false, message: 'Logout failed' });
         }
+
+        // Hapus sesi
         req.session.destroy((err) => {
             if (err) {
                 console.error('Error destroying session:', err);
                 return res.status(500).json({ success: false, message: 'Session destruction failed' });
             }
-            res.clearCookie('connect.sid'); // Hapus cookie sesi jika ada
+
+            // Kosongkan LOGIN_GOOGLE
+            LOGIN_GOOGLE.length = 0;
+
+            // Hapus cookie sesi di browser
+            res.clearCookie('connect.sid', { path: '/' });
+
+            console.log('User logged out successfully');
+            console.log('LOGIN_GOOGLE cleared:', LOGIN_GOOGLE); // Debugging untuk memastikan kosong
             res.json({ success: true, message: 'Logged out successfully' });
         });
     });
 });
+
+
 
 // Endpoint Register
 app.post('/register', async (req, res) => {

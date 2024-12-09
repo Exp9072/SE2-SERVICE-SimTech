@@ -8,6 +8,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const app = express();
 app.use(morgan('dev'));
 
+
 // Sajikan file statis
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -128,13 +129,18 @@ app.use('/register', proxy('http://user-service:3001', {
 }));
 
 // Proxy untuk Google OAuth
-app.use('/auth/google', proxy('http://user-service:3001', {
+app.use('/auth/google', proxy('https://801a-139-192-93-5.ngrok-free.app', {
     proxyReqPathResolver: () => '/auth/google',
 }));
 
-app.use('/auth/google/callback', proxy('http://user-service:3001', {
+app.use('/auth/google/callback', proxy('https://801a-139-192-93-5.ngrok-free.app', {
     proxyReqPathResolver: () => '/auth/google/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
+        const setCookie = proxyRes.headers['set-cookie'];
+        if (setCookie) {
+            res.setHeader('Set-Cookie', setCookie); // Teruskan cookie ke browser
+        }
+        console.log('Response Headers from User Service:', proxyRes.headers);
         const redirectLocation = proxyRes.headers['location'];
         if (proxyRes.statusCode === 302 && redirectLocation) {
             res.redirect(redirectLocation);
@@ -163,6 +169,13 @@ app.use('/auth/github/callback', proxy('http://user-service:3001', {
 
 app.use('/auth/user', proxy('http://user-service:3001', {
     proxyReqPathResolver: () => '/auth/user',
+    userResDecorator: (proxyRes, proxyResData, req, res) => {
+        const setCookie = proxyRes.headers['set-cookie'];
+        if (setCookie) {
+            res.setHeader('Set-Cookie', setCookie); // Teruskan cookie ke browser
+        }
+        return proxyResData;
+    },
 }));
 
 app.use('/login', proxy('http://user-service:3001', {

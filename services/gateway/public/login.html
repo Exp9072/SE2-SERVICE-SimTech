@@ -48,7 +48,7 @@
 
         <!-- OAuth Buttons -->
         <div class="oauth-buttons">
-            <a href="http://localhost:3000/auth/google" class="btn google-btn">Login with Google</a>
+            <a href="http://192.168.0.5:8080/auth/google" class="btn google-btn">Login with Google</a>
             <a href="http://192.168.0.5:8080/auth/github" class="btn github-btn">Login with GitHub</a>
             <p>Don't have an account? <a href="/register">Register here</a></p>
         </div>
@@ -56,41 +56,43 @@
         <!-- Back to Homepage -->
         <a href="/" class="back-btn">Back to Homepage</a>
     </div>
-
     <script>
         // Form Login with Email and Password
         document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-
-        try {
-            const response = await fetch('http://192.168.0.5:8080/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                alert('Login successful!');
-                localStorage.setItem('userId', data.user.id); // Simpan userId ke localStorage
-                localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
-                console.log('login-html');
-                console.log('User-id', data.user.id);
-                console.log('userEmail',data.user.email);
-                window.location.href = '/'; // Redirect to homepage
-            } else {
-                alert('Login failed. Please check your credentials.');
+            e.preventDefault();
+    
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+    
+            try {
+                console.log('Sending login request...'); // Debugging log
+                const response = await fetch('http://192.168.0.5:8080/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+    
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Login response:', data); // Debugging log
+                    alert('Login successful!');
+                    localStorage.setItem('userId', data.user.id); // Simpan userId ke localStorage
+                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
+                    console.log('User logged in: ', data.user); // Debugging log
+                    window.location.href = '/'; // Redirect to homepage
+                } else {
+                    const errorData = await response.json();
+                    console.error('Login failed:', errorData); // Debugging log
+                    alert(`Login failed: ${errorData.message || 'Please check your credentials.'}`);
+                }
+            } catch (error) {
+                console.error('Login error:', error); // Debugging log
+                alert('An error occurred during login. Please try again.');
             }
-        } catch (error) {
-            console.error('Login error:', error);
-            alert('An error occurred. Please try again.');
-        }
-    });
+        });
     </script>
+    
 </body>
 </html>
