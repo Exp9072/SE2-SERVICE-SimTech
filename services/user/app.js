@@ -133,7 +133,7 @@ app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://gateway-service:8080/');
+        res.redirect('http://192.168.0.5:8080/');
     }
 );
 
@@ -145,7 +145,7 @@ app.get(
     '/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://gateway-service:8080/');
+        res.redirect('http://192.168.0.5:8080/');
     }
 );
 
