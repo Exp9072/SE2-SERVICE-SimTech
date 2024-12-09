@@ -179,7 +179,7 @@ app.use('/auth/user', proxy('http://user-service:3001', {
 }));
 
 app.use('/login', proxy('http://user-service:3001', {
-    proxyReqPathResolver: () => '/login',
+    proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
 app.use('/api/products', proxy('http://product-service:3002', {

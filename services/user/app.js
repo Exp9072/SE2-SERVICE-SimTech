@@ -171,6 +171,7 @@ async function customFetch(url, options = {}) {
 // Endpoint to get authenticated user
 app.get('/auth/user', (req, res) => {
     console.log('Authenticated User:', req.user); // Debugging
+    console.log('Session User:', req.session.user); // Debugging
     console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging LOGIN_GOOGLE
 
     if (LOGIN_GOOGLE.length > 0) {
@@ -187,7 +188,7 @@ app.get('/auth/user', (req, res) => {
         });
     } else if (req.isAuthenticated() && req.user) {
         // Jika LOGIN_GOOGLE kosong, gunakan data dari req.user
-        res.json({
+        res.json({  
             success: true,
             user: {
                 id: req.user.id,
@@ -303,7 +304,7 @@ app.post('/register', async (req, res) => {
 });
 
 // Endpoint Login
-app.post('/login', async (req, res) => {
+app.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
 
     try {
@@ -319,14 +320,33 @@ app.post('/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Login berhasil
-        req.session.userId = user.id; // Simpan sesi pengguna
-        res.json({ success: true, message: 'Login successful', user: { id: user.id, email: user.email, name: user.name } });
+        // Simpan data ke sesi
+        req.session.user = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+        };
+
+        // Gunakan req.login untuk mengatur req.user di Passport
+        req.login(req.session.user, (err) => {
+            if (err) {
+                console.error('Login error:', err);
+                return next(err);
+            }
+
+            console.log('Session data set and req.user initialized:', req.user); // Debugging
+            res.json({
+                success: true,
+                message: 'Login successful',
+                user: { id: user.id, email: user.email, name: user.name },
+            });
+        });
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login error:', error); // Debugging
         res.status(500).json({ success: false, message: 'An error occurred during login' });
     }
 });
+
 
 // Jalankan User Service
 app.listen(3001, () => console.log('User service running on port 3001'));
