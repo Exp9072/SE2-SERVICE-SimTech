@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm install
 
 # Salin semua file dari direktori `services/product`
-COPY services/product/ .
+COPY . .
 
 EXPOSE 3002
 CMD ["node", "app.js"]

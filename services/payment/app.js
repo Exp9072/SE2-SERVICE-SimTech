@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const morgan = require('morgan');
 const path = require('path');
+const amqp = require('amqplib');
+
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
@@ -52,12 +54,37 @@ async function authenticateUser(req, res, next) {
     }
 }
 
-const { connectRabbitMQ, getRabbitChannel } = require('./rabbitmq/rabbitmq');
+// RabbitMQ
+let channel = null;
 
+const connectRabbitMQ = async () => {
+    let retries = 5;
+    while (retries) {
+        try {
+            const connection = await amqp.connect(process.env.RABBITMQ_HOST || 'amqp://localhost');
+            channel = await connection.createChannel();
+            console.log('RabbitMQ connected and channel created.');
+            return channel;
+        } catch (error) {
+            console.error(`RabbitMQ connection failed, retries left: ${retries - 1}`, error);
+            retries -= 1;
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
+    }
+    console.error('Exhausted retries for RabbitMQ connection.');
+    process.exit(1);
+};
 
-// Hubungkan RabbitMQ saat layanan mulai
+const getRabbitChannel = () => {
+    if (!channel) {
+        throw new Error('RabbitMQ channel is not initialized. Call connectRabbitMQ first.');
+    }
+    return channel;
+};
+
+module.exports = { connectRabbitMQ, getRabbitChannel };
+// Hubungkan RabbitMQ
 connectRabbitMQ();
-
 // Endpoint untuk melakukan pembayaran
 app.post('/api/payments', async (req, res) => {
     const { orderId, paymentMethod} = req.body;

@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const morgan = require('morgan');
 const path = require('path');
+const amqp = require('amqplib');
+
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
@@ -23,10 +25,35 @@ const db = mysql.createPool({
     database: 'simtech',
 });
 
-const { connectRabbitMQ, getRabbitChannel } = require('./rabbitmq/rabbitmq');
+// RabbitMQ
+let channel = null;
 
+const connectRabbitMQ = async () => {
+    let retries = 5;
+    while (retries) {
+        try {
+            const connection = await amqp.connect(process.env.RABBITMQ_HOST || 'amqp://localhost');
+            channel = await connection.createChannel();
+            console.log('RabbitMQ connected and channel created.');
+            return channel;
+        } catch (error) {
+            console.error(`RabbitMQ connection failed, retries left: ${retries - 1}`, error);
+            retries -= 1;
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+        }
+    }
+    console.error('Exhausted retries for RabbitMQ connection.');
+    process.exit(1);
+};
 
-// Hubungkan RabbitMQ saat layanan mulai
+const getRabbitChannel = () => {
+    if (!channel) {
+        throw new Error('RabbitMQ channel is not initialized. Call connectRabbitMQ first.');
+    }
+    return channel;
+};
+
+// Hubungkan RabbitMQ
 connectRabbitMQ()
     .then(async () => {
         const channel = getRabbitChannel();
@@ -35,22 +62,16 @@ connectRabbitMQ()
         await channel.assertQueue('payment_queue');
         channel.consume('payment_queue', async (message) => {
             if (message) {
-                let paymentData;
                 try {
-                    paymentData = JSON.parse(message.content.toString());
-                } catch (error) {
-                    console.error('Invalid message format:', error);
-                    channel.nack(message, false, false); // Tolak pesan jika format tidak valid
-                    return;
-                }
-        
-                if (!paymentData.orderId || !paymentData.paymentMethod) {
-                    console.error('Invalid message content:', paymentData);
-                    channel.nack(message, false, false); // Tolak pesan jika data tidak lengkap
-                    return;
-                }
-        
-                try {
+                    const paymentData = JSON.parse(message.content.toString());
+                    console.log('Received message from payment_queue:', paymentData);
+
+                    if (!paymentData.orderId || !paymentData.paymentMethod) {
+                        console.error('Invalid message content:', paymentData);
+                        channel.nack(message, false, false);
+                        return;
+                    }
+
                     await db.query(
                         'UPDATE orders SET status = "sedang dikemas" WHERE order_id = ?',
                         [paymentData.orderId]
@@ -58,18 +79,17 @@ connectRabbitMQ()
                     console.log(`Order ${paymentData.orderId} status updated.`);
                     channel.ack(message);
                 } catch (error) {
-                    console.error('Error updating order status:', error);
-                    channel.nack(message); // Kembalikan pesan ke queue
+                    console.error('Error processing payment message:', error);
+                    channel.nack(message);
                 }
             }
         });
-        
     })
     .catch((error) => {
         console.error('Error setting up RabbitMQ consumer:', error);
     });
 
-
+module.exports = { connectRabbitMQ, getRabbitChannel };
 // Middleware untuk memverifikasi pengguna
 async function authenticateUser(req, res, next) {
     const userId = req.headers['user-id']; // ID pengguna yang diteruskan dari layanan otentikasi

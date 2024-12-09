@@ -133,7 +133,7 @@ app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://localhost:3000/');
+        res.redirect('http://gateway-service:8080/');
     }
 );
 
@@ -145,7 +145,7 @@ app.get(
     '/auth/github/callback',
     passport.authenticate('github', { failureRedirect: '/' }),
     (req, res) => {
-        res.redirect('http://localhost:3000/');
+        res.redirect('http://gateway-service:8080/');
     }
 );
 
@@ -220,8 +220,6 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ success: false, message: 'An error occurred during login' });
     }
 });
-
-
 
 // Jalankan User Service
 app.listen(3001, () => console.log('User service running on port 3001'));
