@@ -265,6 +265,13 @@
                     return;
                 }
 
+                    // Validasi stok secara manual (misalnya, stok maksimal 10)
+                const isStockSufficient = cart.every(item => item.quantity <= 10); // Ganti dengan logika yang sesuai
+                if (!isStockSufficient) {
+                    alert('Stok tidak cukup untuk beberapa produk di keranjang.');
+                    return;
+                }
+
                 try {
                     const response = await fetch('/api/orders', {
                         method: 'POST',
@@ -272,23 +279,26 @@
                             'Content-Type': 'application/json',
                             'user-id': userId, // Pastikan userId diteruskan
                         },
-                        body: JSON.stringify({ items: cart }),
+                        body: JSON.stringify({ items: cart }), // Kirim data pesanan ke server
                     });
-
+                    
                     const result = await response.json();
-
+                    
                     if (response.ok) {
                         alert('Pesanan berhasil dibuat! Nomor pesanan Anda: ' + result.orderId);
                         localStorage.removeItem('cart'); // Kosongkan keranjang setelah checkout
                         window.location.href = '/orders'; // Redirect ke halaman daftar pesanan
                     } else {
-                        alert(`Gagal membuat pesanan: ${result.message}`);
+                        // Jika ada pesan kesalahan dari server, tampilkan di alert
+                        alert(`Gagal membuat pesanan: ${result.message || 'Terjadi kesalahan saat membuat pesanan.'}`);
                     }
                 } catch (error) {
                     console.error('Error during checkout:', error);
                     alert('Terjadi kesalahan saat membuat pesanan.');
                 }
             });
+
+
             try {
                 // Periksa apakah pengguna telah login
                 const response = await fetch('/auth/user');

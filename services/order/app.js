@@ -120,6 +120,20 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
         return res.status(400).json({ message: 'Keranjang barang tidak boleh kosong.' });
     }
 
+    // Loop melalui setiap item di keranjang dan periksa stok
+    for (let item of items) {
+        // Query untuk mengambil stok dari produk berdasarkan item_id
+        const [product] = await db.query('SELECT stock_quantity FROM items WHERE item_id = ?', [item.item_id]);
+        
+        // Jika produk tidak ditemukan atau stok tidak cukup
+        if (!product || product.stock_quantity < item.quantity) {
+            // Kirimkan respons dengan pesan stok tidak cukup
+            return res.status(400).json({
+                message: `Stok tidak cukup untuk produk: ${item.item_name || item.name}`
+            });
+        }
+    }
+
     try {
         const connection = await db.getConnection();
         await connection.beginTransaction();
@@ -145,7 +159,10 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
             const { price: pricePerUnit, stock_quantity: stock } = rows[0];
 
             if (stock < item.quantity) {
-                throw new Error(`Stok tidak cukup untuk produk ID ${item.item_id}.`);
+                return res.status(400).json({
+                    message: `Stok tidak cukup untuk produk: ${item.item_name || item.name}`
+                });
+                //throw new Error(`Stok tidak cukup untuk produk ID ${item.item_id}.`);
             }
 
             totalPrice += pricePerUnit * item.quantity;
@@ -181,6 +198,7 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
         res.status(500).json({ message: 'Terjadi kesalahan saat membuat pesanan.', error: error.message });
     }
 });
+
 
 // Endpoint untuk mengambil daftar pesanan berdasarkan email pengguna
 app.get('/api/orders', authenticateUser, async (req, res) => {
