@@ -280,6 +280,21 @@
         .modal .close-btn:hover {
             background-color: #005bb5;
         }
+
+        .product-detail.hidden {
+            display: none;
+        }
+
+        .product-detail {
+            position: absolute; /* Posisi absolut untuk menempel pada tombol */
+            background: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px; /* Atur lebar agar tidak terlalu besar */
+        }
+
     </style>
 </head>
 <body>
@@ -309,41 +324,43 @@
                 <img src="images/poster3.png" alt="Ad 3">
             </div>
         </div>
-
         <!-- Categories -->
         <div class="categories">
-            <h2>Shop by Categories</h2>
-            <div class="category" data-target="#pc-ready">
+            <div class="category" data-target="#PC-Ready-products">
                 <img src="images/pcready1.jpg" alt="PC Ready">
                 <span>PC Ready</span>
             </div>
-            <div class="category" data-target="#cpu">
+            <div class="category" data-target="#Processor-products">
                 <img src="images/amd_ryzen_7_7800x3d.jpg" alt="CPU">
                 <span>CPU</span>
             </div>
-            <div class="category" data-target="#gpu">
+            <div class="category" data-target="#Graphics-Card-products">
                 <img src="images/nvidia_rtx_4090.jpg" alt="GPU">
                 <span>GPU</span>
             </div>
-            <div class="category" data-target="#ram">
+            <div class="category" data-target="#RAM-products">
                 <img src="images/gskill_trident_z_royal_64gb.jpg" alt="RAM">
                 <span>RAM</span>
             </div>
-            <div class="category" data-target="#motherboard">
+            <div class="category" data-target="#Motherboard-products">
                 <img src="images/msi_meg_z790_godlike.jpg" alt="Motherboard">
                 <span>Motherboard</span>
             </div>
-            <div class="category" data-target="#psu">
+            <div class="category" data-target="#PSU-products">
                 <img src="images/ROG-1600W-PSU.jpeg" alt="PSU">
                 <span>PSU</span>
             </div>
-            <div class="category" data-target="#cooling">
+            <div class="category" data-target="#Cooling-products">
                 <img src="images/masterliquid-ml360r.jpg" alt="Cooling">
                 <span>Cooling</span>
             </div>
-            <div class="category" data-target="#storage">
+            <div class="category" data-target="#Storage-products">
                 <img src="images/storage.jpg" alt="Storage">
                 <span>Storage</span>
+            </div>
+            <div class="category" data-target="#Casing-products">
+                <img src="images/cooler_master_masterbox_td500.jpg" alt="Casing">
+                <span>Casing</span>
             </div>
         </div>
         <div class="modal" id="cart-modal">
@@ -351,10 +368,13 @@
             <div id="cart-modal-content"></div>
             <button class="close-btn">Tutup</button>
         </div>
-        
         <div id="PC-Ready-products" class="product-section">
             <h2>PC Ready</h2>
             <div class="product-carousel"></div>
+            <div id="product-detail" class="product-detail hidden">
+                <button id="close-detail">Close</button>
+                <div id="detail-content"></div>
+            </div>
         </div>
         <div id="Processor-products" class="product-section">
             <h2>Processor</h2>
@@ -573,6 +593,50 @@
             const cartModalContent = document.getElementById('cart-modal-content');
             const closeModalButton = cartModal.querySelector('.close-btn');
             
+            const productDetail = document.getElementById('product-detail');
+            const detailContent = document.getElementById('detail-content');
+            const closeDetailBtn = document.getElementById('close-detail');
+
+            // Event listener untuk tombol close
+            closeDetailBtn.addEventListener('click', () => {
+                productDetail.classList.add('hidden');
+                detailContent.innerHTML = ''; // Bersihkan konten sebelumnya
+            });
+
+            // Event delegation untuk tombol detail-btn
+            document.body.addEventListener('click', async (event) => {
+                if (event.target.classList.contains('detail-btn')) {
+                    const productId = event.target.dataset.id;
+
+                    try {
+                        // Ambil data dari API berdasarkan item_id
+                        const response = await fetch(`/api/products/${productId}`);
+                        if (!response.ok) {
+                            throw new Error('Gagal memuat detail produk.');
+                        }
+
+                        const product = await response.json();
+
+                        // Tampilkan detail produk
+                        detailContent.innerHTML = `
+                            <pre>${product.details || 'Tidak ada detail tambahan.'}</pre>
+                        `;
+
+                        // Hitung posisi tombol "View Details"
+                        const buttonRect = event.target.getBoundingClientRect();
+                        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+                        // Set posisi elemen detail
+                        productDetail.style.top = `${buttonRect.bottom + scrollTop}px`; // Tepat di bawah tombol
+                        productDetail.style.left = `${buttonRect.left}px`; // Sejajar dengan tombol
+                        productDetail.classList.remove('hidden'); // Tampilkan elemen
+                    } catch (error) {
+                        console.error(error);
+                        alert('Gagal memuat detail produk. Silakan coba lagi nanti.');
+                    }
+                }
+            });
+
             let isLoggedIn = false;
     
             // Slider Logic 
@@ -663,11 +727,17 @@
                         const productCard = document.createElement('div');
                         productCard.classList.add('product-card');
 
+                        // Tambahkan tombol detail hanya untuk PC-Ready
+                        const detailButtonHtml =
+                            productType.toLowerCase() === 'pc-ready'
+                                ? `<button class="detail-btn" data-id="${product.item_id}">View Details</button>`
+                                : '';
+
                         productCard.innerHTML = `
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
                             <div class="name">${product.item_name}</div>
                             <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
-                            <button class="detail-btn" data-id="${product.item_id}">View Details</button>
+                            ${detailButtonHtml}
                             <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">
                                 Beli
                             </button>

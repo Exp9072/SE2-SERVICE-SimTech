@@ -170,6 +170,10 @@
         .modal .close-btn:hover {
             background-color: #005bb5;
         }
+        
+        .modal.hidden {
+            display: none;
+        }
 
         .user-menu {
             position: relative;
@@ -223,6 +227,20 @@
         .dropdown button:hover {
             background-color: #005bb5;
         }
+
+        .product-detail.hidden {
+            display: none;
+        }
+
+        .product-detail {
+            position: absolute; /* Posisi absolut untuk menempel pada tombol */
+            background: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px; /* Atur lebar agar tidak terlalu besar */
+        }
     </style>
 </head>
 <body>
@@ -256,7 +274,18 @@
         <div id="cart-modal-content"></div>
         <button class="close-btn">Tutup</button>
     </div>
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <p>Anda harus login terlebih dahulu untuk membeli produk.</p>
+            <span class="close-btn">Tutup</span>
+        </div>
+    </div>
+    
     <div id="product-container" class="product-container"></div>
+    <div id="product-detail" class="product-detail hidden">
+        <button id="close-detail">Close</button>
+        <div id="detail-content"></div>
+    </div>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
@@ -264,6 +293,12 @@
     <div class="modal" id="cart-modal">
         <div id="cart-modal-content"></div>
         <button class="close-btn">Tutup</button>
+    </div>
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <p>Anda harus login terlebih dahulu untuk membeli produk.</p>
+            <span class="close-btn">Tutup</span>
+        </div>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -281,6 +316,59 @@
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+
+            const loginModal = document.getElementById('login-modal');
+            const closeLoginModal = loginModal.querySelector('.close-btn');
+            
+            // Tutup modal login
+            closeLoginModal.addEventListener('click', () => {
+                loginModal.classList.remove('active');
+            });
+
+            const productDetail = document.getElementById('product-detail');
+            const detailContent = document.getElementById('detail-content');
+            const closeDetailBtn = document.getElementById('close-detail');
+
+            // Event listener untuk tombol close
+            closeDetailBtn.addEventListener('click', () => {
+                productDetail.classList.add('hidden');
+                detailContent.innerHTML = ''; // Bersihkan konten sebelumnya
+            }); 
+
+            // Event delegation untuk tombol detail-btn
+            document.body.addEventListener('click', async (event) => {
+                if (event.target.classList.contains('detail-btn')) {
+                    event.stopPropagation(); // Cegah bubbling jika ada event lain di parent
+                    const productId = event.target.dataset.id;
+
+                    try {
+                        // Ambil data dari API berdasarkan item_id
+                        const response = await fetch(`/api/products/${productId}`);
+                        if (!response.ok) {
+                            throw new Error('Gagal memuat detail produk.');
+                        }
+
+                        const product = await response.json();
+
+                        // Tampilkan detail produk
+                        detailContent.innerHTML = `
+                            <pre>${product.details || 'Tidak ada detail tambahan.'}</pre>
+                        `;
+
+                        // Hitung posisi tombol "View Details"
+                        const buttonRect = event.target.getBoundingClientRect();
+                        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+                        // Set posisi elemen detail
+                        productDetail.style.top = `${buttonRect.bottom + scrollTop}px`; // Tepat di bawah tombol
+                        productDetail.style.left = `${buttonRect.left}px`; // Sejajar dengan tombol
+                        productDetail.classList.remove('hidden'); // Tampilkan elemen
+                    } catch (error) {
+                        console.error(error);
+                        alert('Gagal memuat detail produk. Silakan coba lagi nanti.');
+                    }
+                }
+            });
 
             // Fungsi untuk memuat produk
             const loadProducts = async (filters = {}) => {
@@ -320,23 +408,72 @@
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
                             <div class="name">${product.item_name}</div>
                             <div class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</div>
-                            <button>Beli</button>
+                            <button class="detail-btn" data-id="${product.item_id}">Lihat Detail</button>
+                            <button class="buy-btn" data-id="${product.item_id}" data-name="${product.item_name}" data-price="${product.price}">Beli</button>
                         `;
-                        productContainer.appendChild(productCard);
 
-                        // Tambahkan event listener untuk tombol beli
-                        productCard.querySelector('button').addEventListener('click', () => {
-                            addToCart(product.item_id, product.item_name, product.price);
-                        });
+                        productContainer.appendChild(productCard);
                     });
+
+                    // Event delegation untuk tombol detail-btn dan buy-btn
+                    document.body.addEventListener('click', async (event) => {
+                        if (event.target.classList.contains('detail-btn')) {
+                            // Tombol "Lihat Detail"
+                            event.stopPropagation(); // Cegah bubbling jika ada event lain di parent
+                            const productId = event.target.dataset.id;
+
+                            try {
+                                // Ambil data dari API berdasarkan item_id
+                                const response = await fetch(`/api/products/${productId}`);
+                                if (!response.ok) {
+                                    throw new Error('Gagal memuat detail produk.');
+                                }
+
+                                const product = await response.json();
+
+                                // Tampilkan detail produk
+                                detailContent.innerHTML = `
+                                    <h2>${product.item_name}</h2>
+                                    <p>${product.details || 'Tidak ada detail tambahan.'}</p>
+                                `;
+
+                                // Hitung posisi tombol "View Details"
+                                const buttonRect = event.target.getBoundingClientRect();
+                                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+                                // Set posisi elemen detail
+                                productDetail.style.top = `${buttonRect.bottom + scrollTop}px`; // Tepat di bawah tombol
+                                productDetail.style.left = `${buttonRect.left}px`; // Sejajar dengan tombol
+                                productDetail.classList.remove('hidden'); // Tampilkan elemen
+                            } catch (error) {
+                                console.error(error);
+                                alert('Gagal memuat detail produk. Silakan coba lagi.');
+                            }
+                        } else if (event.target.classList.contains('buy-btn')) {
+                            // Tombol "Beli"
+                            event.stopPropagation(); // Cegah bubbling
+                            const item_id = event.target.dataset.id;
+                            const productName = event.target.dataset.name;
+                            const productPrice = parseInt(event.target.dataset.price, 10);
+
+                            addToCart(item_id, productName, productPrice);
+                        }
+                    });
+
                 } catch (error) {
                     console.error('Error loading products:', error);
                     productContainer.innerHTML = '<p>Gagal memuat produk. Silakan coba lagi nanti.</p>';
                 }
             };
 
+
             // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {
+                if (!userId) {
+                    // Jika belum login, tampilkan modal login
+                    loginModal.classList.add('active');
+                    return;
+                }
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
                 cart.push({ item_id, name: productName, price: productPrice, quantity: 1 });
                 localStorage.setItem('cart', JSON.stringify(cart));

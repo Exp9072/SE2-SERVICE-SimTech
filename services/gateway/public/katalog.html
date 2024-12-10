@@ -257,6 +257,12 @@
             <div id="cart-modal-content"></div>
             <button class="close-btn">Tutup</button>
         </div>
+        <div class="modal" id="login-modal">
+            <div class="modal-content">
+                <p>Anda harus login terlebih dahulu untuk membeli produk.</p>
+                <span class="close-btn">Tutup</span>
+            </div>
+        </div>
         <div class="products" id="product-container"></div>
     </main>
     <footer>
@@ -278,7 +284,15 @@
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
-    
+            
+            const loginModal = document.getElementById('login-modal');
+            const closeLoginModal = loginModal.querySelector('.close-btn');
+            
+            // Tutup modal login
+            closeLoginModal.addEventListener('click', () => {
+                loginModal.classList.remove('active');
+            });
+
             // Fungsi untuk memuat produk
             const loadProducts = async (filters = {}) => {
                 try {
@@ -347,6 +361,11 @@
     
             // Fungsi untuk menambahkan produk ke keranjang beli
             const addToCart = (item_id, productName, productPrice) => {
+                if (!userId) {
+                    // Jika belum login, tampilkan modal login
+                    loginModal.classList.add('active');
+                    return;
+                }
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
                 cart.push({
                     item_id, // Gunakan item_id sebagai kunci
