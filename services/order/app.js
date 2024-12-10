@@ -73,7 +73,7 @@ connectRabbitMQ()
                     }
 
                     await db.query(
-                        'UPDATE orders SET status = "sedang dikemas" WHERE order_id = ?',
+                        'UPDATE orders SET status = "sedang dikirim" WHERE order_id = ?',
                         [paymentData.orderId]
                     );
                     console.log(`Order ${paymentData.orderId} status updated.`);
@@ -318,6 +318,125 @@ app.post('/api/orders/cart', authenticateUser, async (req, res) => {
     } catch (error) {
         console.error('Error processing cart:', error);
         res.status(500).json({ message: 'Terjadi kesalahan saat memproses keranjang.', error: error.message });
+    }
+});
+
+
+// Middleware untuk memverifikasi apakah pengguna adalah admin
+async function authenticateAdmin(req, res, next) {
+    const userId = req.headers['user-id']; // ID pengguna yang diteruskan dari layanan otentikasi
+    console.log('Authenticating admin : ', userId);
+
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized: User ID is missing.' });
+    }
+
+    try {
+        const [rows] = await db.query('SELECT role FROM users WHERE id = ?', [userId]);
+        if (rows.length === 0) {
+            return res.status(401).json({ message: 'Unauthorized: User not found.' });
+        }
+
+        if (rows[0].role !== 'admin') {
+            return res.status(403).json({ message: 'Forbidden: You do not have admin privileges.' });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Error authenticating admin:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+}
+
+// Endpoint untuk mengupdate status pengiriman menjadi "Sudah Dikirim"
+app.patch('/api/orders/:orderId/status', authenticateAdmin, async (req, res) => {
+    const { orderId } = req.params;
+    const { status } = req.body;  // Mengambil status dari body request
+
+    try {
+        // Memeriksa apakah pesanan ada dan statusnya belum "Sudah Dikirim"
+        console.log('Cek Status');
+        const [order] = await db.query(
+            'SELECT status FROM orders WHERE order_id = ?',
+            [orderId]
+        );
+
+        if (order.length === 0) {
+            console.log('cek pesanan ada apa tidak');
+            return res.status(404).json({ message: 'Pesanan tidak ditemukan.' });
+        }
+
+        if (order[0].status === 'Sudah Dikirim') {
+            console.log('cek status sudah dikirim apa tidak');
+            return res.status(400).json({ message: 'Status sudah "Sudah Dikirim".' });
+        }
+
+        // Update status pesanan dengan status yang diterima di body
+        await db.query(
+            'UPDATE orders SET status = ? WHERE order_id = ?',
+            [status, orderId]
+        );
+        console.log('status pesanan berhasil diganti');
+        res.status(200).json({ message: `Status pesanan ${orderId} berhasil diupdate menjadi "${status}".` });
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat mengupdate status pesanan.' });
+    }
+});
+
+// Endpoint untuk menghapus pesanan yang status pembayaran "unpaid"
+app.delete('/api/orders/:orderId', authenticateAdmin, async (req, res) => {
+    const { orderId } = req.params;
+
+    try {
+        // Memeriksa apakah pesanan ada dan status pembayaran "unpaid"
+        const [order] = await db.query(
+            'SELECT payment FROM orders WHERE order_id = ?',
+            [orderId]
+        );
+
+        if (order.length === 0) {
+            return res.status(404).json({ message: 'Pesanan tidak ditemukan.' });
+        }
+
+        if (order[0].payment !== 'unpaid') {
+            return res.status(400).json({ message: 'Pesanan tidak dapat dihapus karena status pembayaran bukan "unpaid".' });
+        }
+
+        // Ambil semua item dalam pesanan dari tabel order_items
+        const [orderItems] = await db.query(
+            'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
+            [orderId]
+        );
+
+        if (orderItems.length === 0) {
+            return res.status(404).json({ message: 'Item pesanan tidak ditemukan.' });
+        }
+
+        // Mengembalikan stok ke tabel items
+        for (let item of orderItems) {
+            await db.query(
+                'UPDATE items SET stock_quantity = stock_quantity + ? WHERE item_id = ?',
+                [item.quantity, item.product_id]
+            );
+        }
+
+        // Hapus item dari tabel order_items
+        await db.query(
+            'DELETE FROM order_items WHERE order_id = ?',
+            [orderId]
+        );
+
+        // Hapus pesanan dari tabel orders
+        await db.query(
+            'DELETE FROM orders WHERE order_id = ?',
+            [orderId]
+        );
+
+        res.status(200).json({ message: `Pesanan ${orderId} berhasil dihapus dan stok telah diperbarui.` });
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat menghapus pesanan.' });
     }
 });
 

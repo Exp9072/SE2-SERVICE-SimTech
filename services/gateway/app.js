@@ -221,5 +221,47 @@ app.use('/api/orders/cart', proxy('http://order-service:3003', {
     },
 }));
 
+// Middleware untuk meneruskan permintaan ke service pesanan berdasarkan orderId
+app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
+    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
+    pathRewrite: (path, req) => {
+        return path.replace('/api/orders', '/orders');  // Mengubah path untuk diteruskan ke endpoint yang sesuai di order-service
+    },
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];  // Menambahkan header user-id ke proxy request
+        console.log('user-id: ',  userId);
+        if (userId) {
+            proxyReqOpts.headers['user-id'] = userId;  // Meneruskan user-id ke request proxy
+        }
+        return proxyReqOpts;
+    },
+    onError: (err, req, res) => {
+        console.log('error gateway onError');
+        console.error('Error proxying request:', err);
+        res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
+    }
+}));
+
+// Middleware untuk meneruskan permintaan untuk menghapus pesanan berdasarkan orderId dan status "unpaid"
+app.use('/api/orders/:orderId', proxy('http://order-service:3003', {
+    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
+    pathRewrite: (path, req) => {
+        return path.replace('/api/orders', '/orders');  // Mengubah path untuk diteruskan ke endpoint yang sesuai di order-service
+    },
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];  // Menambahkan header user-id ke proxy request
+        console.log('user-id: ',  userId);
+        if (userId) {
+            proxyReqOpts.headers['user-id'] = userId;  // Meneruskan user-id ke request proxy
+        }
+        return proxyReqOpts;
+    },
+    onError: (err, req, res) => {
+        console.log('error gateway onError');
+        console.error('Error proxying request:', err);
+        res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
+    }
+}));
+
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));

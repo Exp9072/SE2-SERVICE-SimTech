@@ -119,8 +119,8 @@ app.post('/api/payments', async (req, res) => {
         }
 
         await db.query(
-            'UPDATE orders SET payment = ?, status = "sedang dikemas" WHERE order_id = ?',
-            ['paid', orderId]
+            'UPDATE orders SET payment = ?, status = ? WHERE order_id = ?',
+            ['paid', 'sedang dikirim', orderId]
         );
 
         await db.query(
