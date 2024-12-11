@@ -136,30 +136,57 @@
         }
 
         .ad-slider {
-        position: relative;
-        width: 100%;
-        margin : auto;
-        overflow: visible; /* Hanya menampilkan satu slide pada satu waktu */
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            overflow: hidden;
+            position: relative;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .slider-container {
             display: flex;
-            width: 100%; /* Lebar total container adalah 3x jumlah gambar */
-            height: 100%;
-            transition: transform 1s ease-in-out; /* Efek slide */
+            width: 100%;
+            height: 400px;
+            position: relative;
         }
 
         .slider-container img {
-            width: 100%; /* Setiap gambar mengambil 100% lebar slider */
-            height: 100%;
+            width: 100%;
+            height: 400px;
             object-fit: cover;
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
         }
 
-        @keyframes slide {
-            0%, 20% { transform: translateX(0); }
-            25%, 45% { transform: translateX(-100%); }
-            50%, 70% { transform: translateX(-200%); }
-            75%, 95% { transform: translateX(-300%); }
+        .slider-container img.active {
+            opacity: 1;
+        }
+
+        /* Slider navigation */
+        .slider-nav {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .slider-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .slider-dot.active {
+            background: white;
+            transform: scale(1.2);
         }
 
         .categories {
@@ -653,6 +680,49 @@
     
             let currentIndex = 0;
 
+            // Set first slide as active
+            slides[0].classList.add('active');
+
+            const updateSliderPosition = () => {
+                // Remove active class from all slides
+                slides.forEach(slide => slide.classList.remove('active'));
+                // Add active class to current slide
+                slides[currentIndex].classList.add('active');
+            };
+    
+            const nextSlide = () => {
+                currentIndex = (currentIndex + 1) % totalSlides;
+                updateSliderPosition();
+            };
+
+            // Add previous slide function
+            const prevSlide = () => {
+                currentIndex = (currentIndex - 1 + totalSlides) % totalSlides;
+                updateSliderPosition();
+            };
+
+            // Auto-advance slides
+            setInterval(nextSlide, 5000);
+
+            // Optional: Add touch support
+            let touchStartX = 0;
+            sliderContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+            });
+            
+            sliderContainer.addEventListener('touchend', (e) => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const diff = touchStartX - touchEndX;
+                
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) {
+                        nextSlide();
+                    } else {
+                        prevSlide();
+                    }
+                }
+            });
+
             // Fungsi untuk menampilkan modal
             function showCartModal(productName) {
                 cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
@@ -664,16 +734,6 @@
                 cartModal.classList.remove('active');
             });
 
-    
-            const updateSliderPosition = () => {
-                const offset = currentIndex * -100; // Perpindahan dalam persen
-                sliderContainer.style.transform = `translateX(${offset}%)`;
-            };
-    
-            const nextSlide = () => {
-                currentIndex = (currentIndex + 1) % totalSlides; // Kembali ke slide pertama setelah terakhir
-                updateSliderPosition();
-            };
     
             // Scroll otomatis ke bagian terkait
             document.querySelectorAll('.category').forEach(category => {
@@ -908,9 +968,6 @@
             } catch (err) {
                 console.error('Error checking login status:', err);
             }
-
-            // Timer untuk mengganti slide setiap 5 detik
-            setInterval(nextSlide, 5000);
 
             // Scroll kiri dan kanan
             document.querySelectorAll('.product-section').forEach(section => {
