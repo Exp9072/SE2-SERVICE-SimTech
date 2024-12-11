@@ -440,6 +440,35 @@ app.delete('/api/orders/:orderId', authenticateAdmin, async (req, res) => {
     }
 });
 
+// Endpoint untuk mendapatkan semua pesanan, dengan opsi filter berdasarkan status pembayaran "unpaid"
+app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
+    const { payment } = req.query; // Mendapatkan query parameter "payment"
+
+    try {
+        let query = 'SELECT * FROM orders';
+        let queryParams = [];
+
+        // Jika ada query "payment", tambahkan filter untuk pembayaran "unpaid"
+        if (payment === 'unpaid') {
+            query += ' WHERE payment = ?';
+            queryParams.push('unpaid');
+        }
+
+        query += ' ORDER BY order_date DESC';
+
+        console.log('Query untuk mendapatkan orders:', query);
+        const [orders] = await db.query(query, queryParams);
+
+        res.status(200).json({
+            message: 'Data pesanan berhasil diambil.',
+            orders,
+        });
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data pesanan.' });
+    }
+});
+
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
 app.listen(PORT, '0.0.0.0', () => console.log(`Order service running on port ${PORT}`));

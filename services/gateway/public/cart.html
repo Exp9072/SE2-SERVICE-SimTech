@@ -82,37 +82,91 @@
         .cart-items {
             margin: 20px auto;
             max-width: 800px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
         }
 
         .cart-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: white;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            transition: transform 0.2s;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .cart-item:hover {
+            transform: translateX(5px);
         }
 
         .cart-item .name {
-            font-weight: bold;
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .cart-item .price {
+            color: #017cff;
+            font-size: 15px;
+        }
+
+        .remove-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .remove-btn:hover {
+            background-color: #cc0000;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(255, 68, 68, 0.2);
+        }
+
+        .total-price {
+            text-align: right;
+            padding: 20px;
+            font-size: 18px;
+            border-top: 2px solid #eee;
+            color: #333;
+        }
+
+        .total-price strong {
+            color: #017cff;
         }
 
         .checkout-btn {
             display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+            padding: 15px 30px;
             background-color: #017cff;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
             text-align: center;
         }
 
         .checkout-btn:hover {
-            background-color: #005bb5;
+            background-color: #0066d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(1, 124, 255, 0.2);
         }
 
         .user-menu {
@@ -175,6 +229,46 @@
             background-color: #f0f0f0;
             color: #666;
         }
+
+        /* Empty cart state */
+        .cart-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .cart-empty p {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .cart-empty a {
+            color: #017cff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .cart-empty a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .cart-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .remove-btn {
+                width: 100%;
+                max-width: 200px;
+            }
+
+            .total-price {
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -224,7 +318,12 @@
             let totalPrice = 0;
 
             if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p>Keranjang Anda kosong.</p>';
+                cartItemsContainer.innerHTML = `
+                    <div class="cart-empty">
+                        <p>Keranjang Anda kosong.</p>
+                        <a href="/katalog">Mulai Belanja</a>
+                    </div>
+                `;
             } else {
                 cart.forEach((item, index) => {
                     const cartItem = document.createElement('div');

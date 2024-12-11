@@ -75,47 +75,121 @@
 
         main {
             max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
+            margin: 40px auto;
+            padding: 30px;
             background-color: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            border-radius: 5px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
         }
 
         main h1 {
             text-align: center;
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 30px;
         }
 
         form {
-            margin-top: 20px;
+            margin-top: 30px;
         }
 
         form label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         form input, form select {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        form input:focus, form select:focus {
+            outline: none;
+            border-color: #017cff;
+        }
+
+        form input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        form select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
         }
 
         form button {
-            width: 100%;
-            padding: 10px;
-            background-color: #017cff;
-            color: white;
+            flex: 1;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
         }
 
-        form button:hover {
-            background-color: #005bb5;
+        form button[type="submit"] {
+            background-color: #017cff;
+            color: white;
+        }
+
+        form button[type="submit"]:hover {
+            background-color: #0066d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(1, 124, 255, 0.2);
+        }
+
+        #cancel-payment-btn {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        #cancel-payment-btn:hover {
+            background-color: #cc0000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.2);
+        }
+
+        /* Payment method icons */
+        .payment-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            main {
+                margin: 20px;
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            form button {
+                width: 100%;
+            }
         }
 
         footer {
@@ -201,20 +275,25 @@
     <main>
         <h1>Pembayaran</h1>
         <form id="payment-form">
-            <label for="order-id">Nomor Pesanan</label>
-            <input type="text" id="order-id" name="order-id" readonly>
+            <div class="form-group">
+                <label for="order-id">Nomor Pesanan</label>
+                <input type="text" id="order-id" name="order-id" readonly>
+            </div>
 
-            <label for="payment-method">Metode Pembayaran</label>
-            <select id="payment-method" name="payment-method" required>
-                <option value="">Pilih Metode</option>
-                <option value="credit-card">Kartu Kredit</option>
-                <option value="bank-transfer">Transfer Bank</option>
-                <option value="ewallet">E-Wallet</option>
-            </select>
+            <div class="form-group">
+                <label for="payment-method">Metode Pembayaran</label>
+                <select id="payment-method" name="payment-method" required>
+                    <option value="">Pilih Metode</option>
+                    <option value="credit-card">💳 Kartu Kredit</option>
+                    <option value="bank-transfer">🏦 Transfer Bank</option>
+                    <option value="ewallet">📱 E-Wallet</option>
+                </select>
+            </div>
 
-            <button type="submit">Bayar Sekarang</button>
-            <button type="button" id="cancel-payment-btn" style="background-color: #f44336;">Batalkan Pembayaran</button>
-
+            <div class="button-group">
+                <button type="submit">Bayar Sekarang</button>
+                <button type="button" id="cancel-payment-btn">Batalkan Pembayaran</button>
+            </div>
         </form>
     </main>
     <footer>

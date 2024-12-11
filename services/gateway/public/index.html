@@ -281,18 +281,204 @@
             background-color: #005bb5;
         }
 
-        .product-detail.hidden {
+        .product-detail {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            z-index: 9999;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .product-detail.active {
+            display: block !important;
+        }
+
+        #detail-content {
+            padding: 20px;
+        }
+
+        #detail-content h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        #detail-content p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        #close-detail {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px;
+            width: 30px;
+            height: 30px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        #close-detail:hover {
+            color: #333;
+            background-color: #f0f0f0;
+        }
+
+        .product-section {
+            margin: 30px auto;
+            padding: 20px;
+            position: relative;
+            max-width: 1200px;
+            overflow: hidden;
+        }
+
+        .product-section h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .product-carousel {
+            position: relative;
+            display: flex;
+            overflow-x: auto;
+            gap: 20px;
+            padding: 0 50px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .product-carousel::-webkit-scrollbar {
             display: none;
         }
 
-        .product-detail {
-            position: absolute; /* Posisi absolut untuk menempel pada tombol */
-            background: #fff;
+        .product-card {
+            flex: 0 0 250px;
+            min-width: 250px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+            margin-bottom: 15px;
+        }
+
+        /* Navigation Buttons */
+        .scroll-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .scroll-btn:hover {
+            background: #017cff;
+            color: white;
+        }
+
+        .scroll-left {
+            left: 5px;
+        }
+
+        .scroll-right {
+            right: 5px;
+        }
+
+        .product-card button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            width: 85%;
+            margin: 5px auto;
+        }
+
+        .buy-btn {
+            background-color: #017cff;
+            color: white;
+            box-shadow: 0 2px 4px rgba(1, 124, 255, 0.2);
+        }
+
+        .buy-btn:hover {
+            background-color: #0066d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(1, 124, 255, 0.3);
+        }
+
+        .detail-btn {
+            background-color: #f0f0f0;
+            color: #333;
             border: 1px solid #ddd;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            z-index: 1000;
-            width: 300px; /* Atur lebar agar tidak terlalu besar */
+        }
+
+        .detail-btn:hover {
+            background-color: #e4e4e4;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Add space between buttons */
+        .product-card .detail-btn + .buy-btn {
+            margin-top: 8px;
+        }
+
+        /* Add overlay background */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+        }
+
+        .modal-overlay.active {
+            display: block;
         }
 
     </style>
@@ -370,219 +556,72 @@
         </div>
         <div id="PC-Ready-products" class="product-section">
             <h2>PC Ready</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
-            <div id="product-detail" class="product-detail hidden">
-                <button id="close-detail">Close</button>
-                <div id="detail-content"></div>
-            </div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Processor-products" class="product-section">
             <h2>Processor</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Graphics-Card-products" class="product-section">
             <h2>Graphics Card</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="RAM-products" class="product-section">
             <h2>RAM</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Motherboard-products" class="product-section">
             <h2>Motherboard</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="PSU-products" class="product-section">
             <h2>PSU</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Cooling-products" class="product-section">
             <h2>Cooling</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Casing-products" class="product-section">
             <h2>Casing</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
         <div id="Storage-products" class="product-section">
             <h2>Storage</h2>
+            <button class="scroll-btn scroll-left">←</button>
             <div class="product-carousel"></div>
+            <button class="scroll-btn scroll-right">→</button>
         </div>
-        
-        
-        <!-- <div id="cpu" class="products">
-            <h2>CPU</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/cpu1.jpg" alt="CPU 1">
-                    <div class="name">Intel Core i7-12700K</div>
-                    <div class="price">Rp 5.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/cpu2.jpg" alt="CPU 2">
-                    <div class="name">AMD Ryzen 7 5800X3D</div>
-                    <div class="price">Rp 6.500.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/cpu3.jpg" alt="CPU 3">
-                    <div class="name">Intel Core i9-13900K</div>
-                    <div class="price">Rp 8.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="gpu" class="products">
-            <h2>GPU</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/gpu1.jpg" alt="GPU 1">
-                    <div class="name">NVIDIA GeForce RTX 3060 Ti</div>
-                    <div class="price">Rp 6.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/gpu2.jpg" alt="GPU 2">
-                    <div class="name">AMD Radeon RX 6800 XT</div>
-                    <div class="price">Rp 8.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/gpu3.jpg" alt="GPU 3">
-                    <div class="name">NVIDIA GeForce RTX 4090</div>
-                    <div class="price">Rp 30.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="ram" class="products">
-            <h2>RAM</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/ram1.jpg" alt="RAM 1">
-                    <div class="name">Corsair Vengeance RGB Pro 16GB (2x8GB)</div>
-                    <div class="price">Rp 1.200.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/ram2.jpg" alt="RAM 2">
-                    <div class="name">G.Skill Trident Z RGB 32GB (2x16GB)</div>
-                    <div class="price">Rp 2.500.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/ram3.jpg" alt="RAM 3">
-                    <div class="name">Kingston Fury Beast 64GB (4x16GB)</div>
-                    <div class="price">Rp 4.800.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="motherboard" class="products">
-            <h2>Motherboard</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/motherboard1.jpg" alt="Motherboard 1">
-                    <div class="name">ASUS ROG STRIX Z690-E</div>
-                    <div class="price">Rp 6.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/motherboard2.jpg" alt="Motherboard 2">
-                    <div class="name">MSI MPG X570 Gaming Edge WiFi</div>
-                    <div class="price">Rp 4.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/motherboard3.jpg" alt="Motherboard 3">
-                    <div class="name">Gigabyte Z790 AORUS Master</div>
-                    <div class="price">Rp 7.500.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="psu" class="products">
-            <h2>PSU</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/psu1.jpg" alt="PSU 1">
-                    <div class="name">Corsair RM750x 750W 80+ Gold</div>
-                    <div class="price">Rp 1.800.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/psu2.jpg" alt="PSU 2">
-                    <div class="name">Seasonic PRIME 850W 80+ Platinum</div>
-                    <div class="price">Rp 3.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/psu3.jpg" alt="PSU 3">
-                    <div class="name">Cooler Master V1000 1000W 80+ Gold</div>
-                    <div class="price">Rp 2.500.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="cooling" class="products">
-            <h2>Cooling</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/cooling1.jpg" alt="Cooling 1">
-                    <div class="name">Cooler Master Hyper 212 RGB</div>
-                    <div class="price">Rp 800.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/cooling2.jpg" alt="Cooling 2">
-                    <div class="name">NZXT Kraken X63 280mm AIO</div>
-                    <div class="price">Rp 3.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/cooling3.jpg" alt="Cooling 3">
-                    <div class="name">Noctua NH-D15 Chromax Black</div>
-                    <div class="price">Rp 2.000.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="storage" class="products">
-            <h2>Storage</h2>
-            <div class="product-carousel">
-                <div class="product-card">
-                    <img src="images/storage1.jpg" alt="Storage 1">
-                    <div class="name">Samsung 970 EVO Plus 1TB NVMe SSD</div>
-                    <div class="price">Rp 2.500.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/storage2.jpg" alt="Storage 2">
-                    <div class="name">Western Digital Black 2TB HDD</div>
-                    <div class="price">Rp 1.200.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-                <div class="product-card">
-                    <img src="images/storage3.jpg" alt="Storage 3">
-                    <div class="name">Seagate BarraCuda 4TB HDD</div>
-                    <div class="price">Rp 1.800.000</div>
-                    <button class="detail-btn">View Details</button>
-                </div>
-            </div>
-        </div>         -->
     </main>
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            // Prevent page reload when clicking SimTech on index page
+            document.querySelector('.brand').addEventListener('click', (e) => {
+                if (window.location.pathname === '/') {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+
             const profilePicture = document.getElementById('profile-picture');
             const dropdownMenu = document.getElementById('dropdown-menu');
             const loginBtn = document.getElementById('login-btn');
@@ -599,42 +638,10 @@
 
             // Event listener untuk tombol close
             closeDetailBtn.addEventListener('click', () => {
-                productDetail.classList.add('hidden');
-                detailContent.innerHTML = ''; // Bersihkan konten sebelumnya
-            });
-
-            // Event delegation untuk tombol detail-btn
-            document.body.addEventListener('click', async (event) => {
-                if (event.target.classList.contains('detail-btn')) {
-                    const productId = event.target.dataset.id;
-
-                    try {
-                        // Ambil data dari API berdasarkan item_id
-                        const response = await fetch(`/api/products/${productId}`);
-                        if (!response.ok) {
-                            throw new Error('Gagal memuat detail produk.');
-                        }
-
-                        const product = await response.json();
-
-                        // Tampilkan detail produk
-                        detailContent.innerHTML = `
-                            <pre>${product.details || 'Tidak ada detail tambahan.'}</pre>
-                        `;
-
-                        // Hitung posisi tombol "View Details"
-                        const buttonRect = event.target.getBoundingClientRect();
-                        const scrollTop = window.scrollY || document.documentElement.scrollTop;
-
-                        // Set posisi elemen detail
-                        productDetail.style.top = `${buttonRect.bottom + scrollTop}px`; // Tepat di bawah tombol
-                        productDetail.style.left = `${buttonRect.left}px`; // Sejajar dengan tombol
-                        productDetail.classList.remove('hidden'); // Tampilkan elemen
-                    } catch (error) {
-                        console.error(error);
-                        alert('Gagal memuat detail produk. Silakan coba lagi nanti.');
-                    }
-                }
+                const productDetail = document.getElementById('product-detail');
+                const overlay = document.querySelector('.modal-overlay');
+                productDetail.classList.remove('active');
+                overlay.classList.remove('active');
             });
 
             let isLoggedIn = false;
@@ -699,16 +706,25 @@
                 });
             });
     
-            // Fungsi untuk memuat produk dari API berdasarkan tipe tertentu
+            // Add debounce function at the top of your script
+            const debounce = (func, delay) => {
+                let timer;
+                return (...args) => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => func.apply(this, args), delay);
+                };
+            };
+
+            // Update the loadProductsByType function
             const loadProductsByType = async (productType) => {
                 try {
-                    const response = await fetch('/api/products'); // Panggil endpoint API produk
+                    const response = await fetch('/api/products');
                     const products = await response.json();
 
-                    // Filter produk untuk hanya mengambil item_type sesuai dengan parameter
-                    const filteredProducts = products.filter(product => product.item_type.toLowerCase() === productType.toLowerCase());
+                    const filteredProducts = products.filter(product => 
+                        product.item_type.toLowerCase() === productType.toLowerCase()
+                    );
 
-                    // Ambil elemen carousel berdasarkan ID
                     const productCarousel = document.querySelector(`#${productType}-products .product-carousel`);
                     if (!productCarousel) {
                         console.error(`Tidak dapat menemukan elemen dengan ID ${productType}-products`);
@@ -720,18 +736,15 @@
                         return;
                     }
 
-                    productCarousel.innerHTML = ''; // Kosongkan elemen sebelum menambahkan produk baru
+                    productCarousel.innerHTML = '';
 
-                    // Tambahkan produk ke elemen HTML
                     filteredProducts.forEach((product) => {
                         const productCard = document.createElement('div');
                         productCard.classList.add('product-card');
 
-                        // Tambahkan tombol detail hanya untuk PC-Ready
-                        const detailButtonHtml =
-                            productType.toLowerCase() === 'pc-ready'
-                                ? `<button class="detail-btn" data-id="${product.item_id}">View Details</button>`
-                                : '';
+                        const detailButtonHtml = productType.toLowerCase() === 'pc-ready'
+                            ? `<button class="detail-btn" data-id="${product.item_id}">View Details</button>`
+                            : '';
 
                         productCard.innerHTML = `
                             <img src="${product.image_url || 'images/default.jpg'}" alt="${product.item_name}">
@@ -746,37 +759,54 @@
                         productCarousel.appendChild(productCard);
                     });
 
-                    const debounce = (func, delay) => {
-                        let timer; 
-                        return (...args) =>{
-                            clearTimeout(timer);
-                            timer = setTimeout(() => func.apply(this, args), delay);
-                        };
-                    };
-
-                    // Event listener untuk tombol beli
-                    document.querySelectorAll('.buy-btn').forEach((button) => {
-                        if (!button.dataset.listenerAdded) {
-                            button.addEventListener(
-                                'click',
-                                debounce((e) => {
-                                    const item_id = button.dataset.id;
-                                    const productName = button.dataset.name;
-                                    const productPrice = parseFloat(button.dataset.price);
-
-                                    if (!isLoggedIn) {
-                                        alert('Silakan login terlebih dahulu untuk membeli barang.');
-                                        window.location.href = '/login';
-                                    } else {
-                                        addToCart(item_id, productName, productPrice);
+                    // Add event listeners with debounce
+                    if (productType.toLowerCase() === 'pc-ready') {
+                        productCarousel.querySelectorAll('.detail-btn').forEach(button => {
+                            button.addEventListener('click', debounce(async (event) => {
+                                const productId = event.target.dataset.id;
+                                try {
+                                    const response = await fetch(`/api/products/${productId}`);
+                                    if (!response.ok) {
+                                        throw new Error('Gagal memuat detail produk.');
                                     }
-                                }, 300)
-                            );
 
-                            // Tandai bahwa listener sudah ditambahkan
-                            button.dataset.listenerAdded = 'true';
-                        }
+                                    const product = await response.json();
+                                    const detailContent = document.getElementById('detail-content');
+                                    const productDetail = document.getElementById('product-detail');
+                                    const overlay = document.querySelector('.modal-overlay');
+                                    
+                                    detailContent.innerHTML = `
+                                        <h2>${product.item_name}</h2>
+                                        <p>${product.details || 'Tidak ada detail tambahan.'}</p>
+                                    `;
+
+                                    overlay.classList.add('active');
+                                    productDetail.classList.add('active');
+                                    
+                                } catch (error) {
+                                    console.error(error);
+                                    alert('Gagal memuat detail produk. Silakan coba lagi.');
+                                }
+                            }, 300));
+                        });
+                    }
+
+                    // Add debounce for buy buttons
+                    productCarousel.querySelectorAll('.buy-btn').forEach(button => {
+                        button.addEventListener('click', debounce((e) => {
+                            const item_id = button.dataset.id;
+                            const productName = button.dataset.name;
+                            const productPrice = parseFloat(button.dataset.price);
+
+                            if (!isLoggedIn) {
+                                alert('Silakan login terlebih dahulu untuk membeli barang.');
+                                window.location.href = '/login';
+                            } else {
+                                addToCart(item_id, productName, productPrice);
+                            }
+                        }, 300));
                     });
+
                 } catch (error) {
                     console.error(`Error loading ${productType} products:`, error);
                     const productSection = document.querySelector(`#${productType}-products .product-carousel`);
@@ -881,7 +911,33 @@
 
             // Timer untuk mengganti slide setiap 5 detik
             setInterval(nextSlide, 5000);
+
+            // Scroll kiri dan kanan
+            document.querySelectorAll('.product-section').forEach(section => {
+                const carousel = section.querySelector('.product-carousel');
+                const leftBtn = section.querySelector('.scroll-left');
+                const rightBtn = section.querySelector('.scroll-right');
+
+                leftBtn.addEventListener('click', () => {
+                    carousel.scrollBy({
+                        left: -300,
+                        behavior: 'smooth'
+                    });
+                });
+
+                rightBtn.addEventListener('click', () => {
+                    carousel.scrollBy({
+                        left: 300,
+                        behavior: 'smooth'
+                    });
+                });
+            });
         });
     </script>
+    <div class="modal-overlay"></div>
+    <div id="product-detail" class="product-detail">
+        <button id="close-detail">×</button>
+        <div id="detail-content"></div>
+    </div>
 </body>
 </html>

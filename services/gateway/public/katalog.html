@@ -61,51 +61,77 @@
         }
 
         .search-bar {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
         }
 
-        .search-bar input,
-        .search-bar select,
-        .search-bar button {
-            padding: 10px;
-            font-size: 16px;
+        .search-bar select {
+            min-width: 200px;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            margin-right: 10px;
+            background-color: white;
+        }
+
+        .search-bar input {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
 
         .search-bar button {
+            padding: 12px 25px;
             background-color: #017cff;
             color: white;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
-        }
-
-        .search-bar button:hover {
-            background-color: #005bb5;
+            transition: background-color 0.2s;
         }
 
         .products {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
         .product-card {
-            width: calc(33.333% - 10px);
             background-color: white;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
             text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .product-card img {
             width: 100%;
-            height: 150px;
-            object-fit: cover;
-            margin-bottom: 10px;
+            height: 200px;
+            object-fit: contain;
+            margin-bottom: 15px;
+            transition: transform 0.3s;
+        }
+
+        .product-card:hover img {
+            transform: scale(1.05);
         }
 
         .product-card .name {
@@ -183,38 +209,200 @@
         .modal {
             display: none;
             position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background-color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            z-index: 1000;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
             max-width: 400px;
-            border-radius: 8px;
+            width: 90%;
             text-align: center;
         }
 
-        .modal.active {
-            display: block;
-        }
-
-        .modal h2 {
-            margin: 0 0 10px;
-        }
-
-        .modal .close-btn {
+        .close-btn {
+            margin-top: 20px;
+            padding: 12px 25px;
             background-color: #017cff;
             color: white;
-            padding: 10px 15px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .buy-btn {
+            background-color: #017cff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 80%;
             margin-top: 10px;
         }
 
-        .modal .close-btn:hover {
+        .buy-btn:hover {
             background-color: #005bb5;
+        }
+
+        .loading-spinner {
+            width: 100%;
+            text-align: center;
+            padding: 50px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #017cff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .product-card {
+                width: 100%;
+            }
+            
+            .search-bar {
+                flex-direction: column;
+            }
+            
+            .search-bar input,
+            .search-bar select,
+            .search-bar button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .product-card {
+                width: 100%;
+            }
+            
+            header {
+                flex-direction: column;
+                padding: 15px;
+            }
+            
+            nav {
+                margin: 15px 0;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .products {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .products {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .products {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .modal p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .modal button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .modal .confirm-btn {
+            background: #017cff;
+            color: white;
+        }
+
+        .modal .confirm-btn:hover {
+            background: #0066d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(1, 124, 255, 0.2);
+        }
+
+        .modal .cancel-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .modal .cancel-btn:hover {
+            background: #e4e4e4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -259,8 +447,12 @@
         </div>
         <div class="modal" id="login-modal">
             <div class="modal-content">
+                <h2>Login Diperlukan</h2>
                 <p>Anda harus login terlebih dahulu untuk membeli produk.</p>
-                <span class="close-btn">Tutup</span>
+                <div class="modal-buttons">
+                    <button class="cancel-btn close-btn">Tutup</button>
+                    <button class="confirm-btn" onclick="window.location.href='/login'">Login</button>
+                </div>
             </div>
         </div>
         <div class="products" id="product-container"></div>
@@ -268,6 +460,16 @@
     <footer>
         <p>&copy; 2024 SimTech</p>
     </footer>
+    <div id="buy-modal" class="modal">
+        <div class="modal-content">
+            <h2>Konfirmasi Pembelian</h2>
+            <p>Apakah Anda yakin ingin menambahkan <strong id="product-name"></strong> ke keranjang?</p>
+            <div class="modal-buttons">
+                <button class="cancel-btn" id="cancel-buy">Batal</button>
+                <button class="confirm-btn" id="confirm-buy">Tambahkan</button>
+            </div>
+        </div>
+    </div>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const productContainer = document.getElementById('product-container');
@@ -360,24 +562,50 @@
             };
     
             // Fungsi untuk menambahkan produk ke keranjang beli
-            const addToCart = (item_id, productName, productPrice) => {
-                if (!userId) {
-                    // Jika belum login, tampilkan modal login
-                    loginModal.classList.add('active');
-                    return;
+            const addToCart = async (item_id, productName, productPrice) => {
+                try {
+                    // Check if user is logged in
+                    if (!userId) {
+                        const loginModal = document.getElementById('login-modal');
+                        loginModal.classList.add('active');
+                        
+                        // Add event listener to close login modal
+                        const closeLoginBtn = loginModal.querySelector('.close-btn');
+                        closeLoginBtn.onclick = () => {
+                            loginModal.classList.remove('active');
+                        };
+                        return;
+                    }
+
+                    const buyModal = document.getElementById('buy-modal');
+                    const productNameEl = document.getElementById('product-name');
+                    const confirmBuyBtn = document.getElementById('confirm-buy');
+                    const cancelBuyBtn = document.getElementById('cancel-buy');
+                    
+                    productNameEl.textContent = productName;
+                    buyModal.classList.add('active');
+                    
+                    // Handle cancel
+                    cancelBuyBtn.onclick = () => {
+                        buyModal.classList.remove('active');
+                    };
+                    
+                    // Handle confirm
+                    confirmBuyBtn.onclick = async () => {
+                        buyModal.classList.remove('active');
+                        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                        cart.push({
+                            id: item_id,
+                            name: productName,
+                            price: productPrice
+                        });
+                        localStorage.setItem('cart', JSON.stringify(cart));
+                        alert('Produk berhasil ditambahkan ke keranjang!');
+                    };
+                } catch (error) {
+                    console.error('Error adding to cart:', error);
+                    alert('Gagal menambahkan ke keranjang. Silakan coba lagi.');
                 }
-                const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                cart.push({
-                    item_id, // Gunakan item_id sebagai kunci
-                    name: productName,
-                    price: productPrice,
-                    quantity: 1, // Default quantity untuk setiap item
-                });
-                localStorage.setItem('cart', JSON.stringify(cart));
-    
-                // Menampilkan modal setelah item ditambahkan ke keranjang
-                cartModalContent.innerHTML = `<p>Produk <strong>${productName}</strong> berhasil ditambahkan ke keranjang.</p>`;
-                cartModal.classList.add('active');
             };
     
             // Event listener untuk menutup modal
@@ -447,6 +675,32 @@
             } catch (err) {
                 console.error('Error checking login status:', err);
             }
+
+            const showLoading = () => {
+                productContainer.innerHTML = `
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Memuat produk...</p>
+                    </div>
+                `;
+            };
+
+            const showProductDetails = (product) => {
+                const modal = document.createElement('div');
+                modal.classList.add('product-detail-modal');
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <img src="${product.image_url}" alt="${product.item_name}">
+                        <h2>${product.item_name}</h2>
+                        <p class="price">Rp ${new Intl.NumberFormat('id-ID').format(product.price)}</p>
+                        <p class="description">${product.description || 'Tidak ada deskripsi'}</p>
+                        <p class="stock">Stok: ${product.stock_quantity}</p>
+                        <button class="buy-btn">Tambah ke Keranjang</button>
+                        <button class="close-btn">Tutup</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            };
         });
     </script>
 </body>

@@ -263,5 +263,33 @@ app.use('/api/orders/:orderId', proxy('http://order-service:3003', {
     }
 }));
 
+// Middleware untuk meneruskan permintaan ke service pesanan (get all orders, dengan atau tanpa filter payment)
+app.use('/api/admin/orders', proxy('http://order-service:3003', {
+    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
+    pathRewrite: (path, req) => {
+        const url = new URL(req.url, `http://${req.headers.host}`); // Mendapatkan query parameter
+        const payment = url.searchParams.get('payment'); // Ambil nilai query parameter "payment"
+
+        // Jika ada filter payment, tambahkan query ke path yang diteruskan ke service order
+        if (payment) {
+            return `/orders?payment=${payment}`;
+        }
+        return '/orders'; // Jika tidak ada filter payment, gunakan path tanpa query
+    },
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id']; // Mendapatkan user-id dari header
+        console.log('user-id: ', userId);
+        if (userId) {
+            proxyReqOpts.headers['user-id'] = userId; // Meneruskan user-id ke request proxy
+        }
+        return proxyReqOpts;
+    },
+    onError: (err, req, res) => {
+        console.log('error gateway onError');
+        console.error('Error proxying request:', err);
+        res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
+    }
+}));
+
 // Jalankan Gateway
 app.listen(3000, () => console.log('Gateway running on port 3000'));
