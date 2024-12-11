@@ -77,8 +77,10 @@ passport.use(
             clientID: process.env.GITHUB_CLIENT_ID,
             clientSecret: process.env.GITHUB_CLIENT_SECRET,
             callbackURL: process.env.GITHUB_CALLBACK_URL,
+            proxy: true
         },
         async (accessToken, refreshToken, profile, done) => {
+            console.log('GitHub profile:', profile);
             const email = profile.username;
             const profilePicture = profile.photos?.[0]?.value || null;
 
@@ -95,6 +97,7 @@ passport.use(
                 const user = { ...rows[0], profile_picture: rows[0].profile_picture || profilePicture };
                 return done(null, user);
             } catch (error) {
+                console.error('GitHub auth error:', error);
                 return done(error, null);
             }
         }
@@ -170,35 +173,34 @@ async function customFetch(url, options = {}) {
 
 // Endpoint to get authenticated user
 app.get('/auth/user', (req, res) => {
-    console.log('Authenticated User:', req.user); // Debugging
-    console.log('Session User:', req.session.user); // Debugging
-    console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging LOGIN_GOOGLE
+    console.log('Authenticated User:', req.user);
+    console.log('Session User:', req.session.user);
+    console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE);
 
     if (LOGIN_GOOGLE.length > 0) {
-        // Jika LOGIN_GOOGLE memiliki data, gunakan data dari LOGIN_GOOGLE
-        const latestGoogleUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
+        const latestUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
         res.json({
             success: true,
             user: {
-                id: latestGoogleUser.id,
-                name: latestGoogleUser.name || 'User',
-                email: latestGoogleUser.email,
-                profilePicture: latestGoogleUser.profilePicture || '/default-profile.png',
+                id: latestUser.id,
+                name: latestUser.name || 'User',
+                email: latestUser.email,
+                profilePicture: latestUser.profilePicture || '/default-profile.png',
+                role: latestUser.role || 'user'
             },
         });
     } else if (req.isAuthenticated() && req.user) {
-        // Jika LOGIN_GOOGLE kosong, gunakan data dari req.user
-        res.json({  
+        res.json({
             success: true,
             user: {
                 id: req.user.id,
                 name: req.user.name || 'User',
                 email: req.user.email,
                 profilePicture: req.user.profile_picture || '/default-profile.png',
+                role: req.user.role || 'user'
             },
         });
     } else {
-        // Jika tidak ada data dari LOGIN_GOOGLE dan req.user
         res.json({ success: false, user: null });
     }
 });
@@ -220,6 +222,7 @@ app.get(
             name: req.user.name,
             email: req.user.email,
             profilePicture: req.user.profile_picture,
+            role: req.user.role
         });
 
         console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging
@@ -237,13 +240,69 @@ app.get('/auth/google/data', (req, res) => {
 app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] }));
 
 // GitHub OAuth Callback Endpoint
-app.get(
-    '/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: '/' }),
+app.get('/auth/github/callback',
+    passport.authenticate('github', {
+        failureRedirect: 'https://192.168.0.5:8443/login',
+        failureMessage: true,
+        session: true
+    }),
     (req, res) => {
-        res.redirect('http://192.168.0.5:8080/');
+        console.log('GitHub callback reached', {
+            user: req.user,
+            session: req.session,
+            isAuthenticated: req.isAuthenticated()
+        });
+        
+        if (!req.user) {
+            console.log('No user found in request');
+            return res.redirect('https://192.168.0.5:8443/login?error=auth_failed');
+        }
+
+        // Store in LOGIN_GOOGLE array (we'll use this for both Google and GitHub)
+        LOGIN_GOOGLE.push({
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
+            profilePicture: req.user.profile_picture,
+            role: req.user.role
+        });
+
+        // Store user data in session
+        req.session.user = {
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
+            profile_picture: req.user.profile_picture,
+            role: req.user.role
+        };
+        
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.redirect('https://192.168.0.5:8443/login?error=session_error');
+            }
+            console.log('Session saved with user:', req.session.user);
+            console.log('Session saved successfully, redirecting to homepage');
+            
+            // Send user data in query params
+            const userData = encodeURIComponent(JSON.stringify(req.session.user));
+            res.redirect(`https://192.168.0.5:8443?user=${userData}`);
+        });
     }
 );
+
+// Add a route to check session
+app.get('/check-session', (req, res) => {
+    console.log('Checking session:', {
+        session: req.session,
+        user: req.session.user,
+        isAuthenticated: req.isAuthenticated()
+    });
+    res.json({
+        authenticated: req.isAuthenticated(),
+        user: req.session.user
+    });
+});
 
 // Endpoint Logout
 app.post('/logout', (req, res) => {
@@ -272,8 +331,6 @@ app.post('/logout', (req, res) => {
         });
     });
 });
-
-
 
 // Endpoint Register
 app.post('/register', async (req, res) => {

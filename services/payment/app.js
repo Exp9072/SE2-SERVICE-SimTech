@@ -11,6 +11,14 @@ const app = express();
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 
+// Koneksi ke database
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+});
+
 // Tangani error global di seluruh proses
 process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
@@ -21,13 +29,6 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled rejection:', reason, 'at', promise);
 });
 
-// Koneksi ke database
-const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: 'simtech',
-});
 
 // Middleware untuk memverifikasi pengguna
 async function authenticateUser(req, res, next) {

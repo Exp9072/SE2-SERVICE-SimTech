@@ -508,6 +508,52 @@
             display: block;
         }
 
+        /* Category Card Animation */
+        .category-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border-radius: 15px;
+            overflow: hidden;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .category-card img {
+            border-radius: 15px;
+            transition: transform 0.3s ease;
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .category-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .category-card span {
+            margin-top: 10px;
+            text-align: center;
+            width: auto;
+            padding: 5px 10px;
+            background: transparent;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .category {
+            position: relative;
+            padding-bottom: 30px;
+        }
+
     </style>
 </head>
 <body>
@@ -539,39 +585,39 @@
         </div>
         <!-- Categories -->
         <div class="categories">
-            <div class="category" data-target="#PC-Ready-products">
+            <div class="category category-card" data-target="#PC-Ready-products">
                 <img src="images/pcready1.jpg" alt="PC Ready">
                 <span>PC Ready</span>
             </div>
-            <div class="category" data-target="#Processor-products">
+            <div class="category category-card" data-target="#Processor-products">
                 <img src="images/amd_ryzen_7_7800x3d.jpg" alt="CPU">
                 <span>CPU</span>
             </div>
-            <div class="category" data-target="#Graphics-Card-products">
+            <div class="category category-card" data-target="#Graphics-Card-products">
                 <img src="images/nvidia_rtx_4090.jpg" alt="GPU">
                 <span>GPU</span>
             </div>
-            <div class="category" data-target="#RAM-products">
+            <div class="category category-card" data-target="#RAM-products">
                 <img src="images/gskill_trident_z_royal_64gb.jpg" alt="RAM">
                 <span>RAM</span>
             </div>
-            <div class="category" data-target="#Motherboard-products">
+            <div class="category category-card" data-target="#Motherboard-products">
                 <img src="images/msi_meg_z790_godlike.jpg" alt="Motherboard">
                 <span>Motherboard</span>
             </div>
-            <div class="category" data-target="#PSU-products">
+            <div class="category category-card" data-target="#PSU-products">
                 <img src="images/ROG-1600W-PSU.jpeg" alt="PSU">
                 <span>PSU</span>
             </div>
-            <div class="category" data-target="#Cooling-products">
+            <div class="category category-card" data-target="#Cooling-products">
                 <img src="images/masterliquid-ml360r.jpg" alt="Cooling">
                 <span>Cooling</span>
             </div>
-            <div class="category" data-target="#Storage-products">
+            <div class="category category-card" data-target="#Storage-products">
                 <img src="images/storage.jpg" alt="Storage">
                 <span>Storage</span>
             </div>
-            <div class="category" data-target="#Casing-products">
+            <div class="category category-card" data-target="#Casing-products">
                 <img src="images/cooler_master_masterbox_td500.jpg" alt="Casing">
                 <span>Casing</span>
             </div>

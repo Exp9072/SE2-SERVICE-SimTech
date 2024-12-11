@@ -4,7 +4,10 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
+// Middleware
 const app = express();
+app.use(morgan('dev'));
+app.use(express.json());
 
 // Database Connection
 const db = mysql.createPool({
@@ -13,10 +16,6 @@ const db = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: 'simtech',
 });
-
-// Middleware
-app.use(morgan('dev'));
-app.use(express.json());
 
 // Endpoint untuk mendapatkan semua produk
 app.get('/api/products', async (req, res) => {
@@ -28,8 +27,7 @@ app.get('/api/products', async (req, res) => {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
-});
-
+}); 
 
 // Endpoint untuk mendapatkan detail produk berdasarkan item_id
 app.get('/api/products/:id', async (req, res) => {

@@ -1,0 +1,136 @@
+API Routes and Endpoints
+----------------------
+1. Gateway Service (Port 8443 HTTPS, 8080 HTTP)
+   - Handles all incoming requests
+   - Routes to appropriate services
+   - Implements rate limiting and security
+
+2. User Service (Port 3001)
+   Authentication Routes:
+   - POST /register
+     * New user registration
+     * Required: name, email, password
+   
+   - POST /login
+     * User authentication
+     * Required: email, password
+   
+   OAuth Routes:
+   - GET /auth/google
+   - GET /auth/github
+     * OAuth authentication handlers
+     * Redirects to OAuth providers
+   
+   User Management:
+   - GET /auth/user
+     * Get current user details
+     * Requires authentication
+
+3. Product Service (Port 3002)
+   Product Routes:
+   - GET /api/products
+     * Retrieve all products
+     * Optional query parameters for filtering
+   
+   - GET /api/products/:id
+     * Get specific product details
+     * Required: product ID
+   
+   Stock Management:
+   - PUT /api/products/:id/stock
+     * Update product stock
+     * Required: product ID, quantity
+     * Authentication required
+
+4. Order Service (Port 3003)
+   Order Management:
+   - POST /api/orders
+     * Create new order
+     * Required: user ID, product details
+   
+   - GET /api/orders/:orderId
+     * Get order details
+     * Required: order ID
+     * Authentication required
+   
+   - DELETE /api/orders/:orderId
+     * Cancel unpaid order
+     * Required: order ID, user authentication
+   
+   Cart Operations:
+   - POST /api/orders/cart
+     * Add items to cart
+     * Required: user ID, product details
+
+5. Payment Service (Port 3004)
+   Payment Processing:
+   - POST /api/payments
+     * Process payment for order
+     * Required: order ID, payment details
+   
+   - GET /api/payments/:orderId
+     * Get payment status
+     * Required: order ID
+   
+   - POST /api/payments/cancel/:orderId
+     * Cancel payment
+     * Required: order ID, user authentication
+
+Service Communication Flow
+------------------------
+1. Authentication Flow:
+   Client -> Gateway -> User Service
+   - Rate limited: 2000 requests per 15 minutes
+   - Requires: user credentials or OAuth tokens
+
+2. Product Operations:
+   Client -> Gateway -> Product Service
+   - Rate limited: 10000 requests per 15 minutes
+   - Public access for GET requests
+   - Protected access for stock updates
+
+3. Order Processing:
+   Client -> Gateway -> Order Service -> Product Service
+   - Requires authentication
+   - Checks product availability
+   - Updates stock quantities
+
+4. Payment Processing:
+   Client -> Gateway -> Payment Service -> Order Service
+   - Requires authentication
+   - Validates order status
+   - Updates order status
+
+Security Middleware
+-----------------
+1. Rate Limiting:
+   Global: 1000 requests per 15 minutes
+   Products: 10000 requests per 15 minutes
+   Users: 2000 requests per 15 minutes
+
+2. IP Throttling:
+   Global: 600ms between requests
+   Products: 50ms between requests
+   Users: 100ms between requests
+
+3. Authentication Required:
+   - All order operations
+   - Payment processing
+   - User profile operations
+   - Stock management
+
+Error Responses
+-------------
+1. Authentication Errors:
+   - 401: Unauthorized
+   - 403: Forbidden
+
+2. Rate Limiting:
+   - 429: Too Many Requests
+
+3. Resource Errors:
+   - 404: Not Found
+   - 400: Bad Request
+
+4. Server Errors:
+   - 500: Internal Server Error
