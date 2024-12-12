@@ -180,8 +180,9 @@ app.get('/register', (req, res) => {
 });
 
 app.get('/inventaris', (req, res, next) => {
-    // Get token from query parameter or cookie
-    const token = req.query.token || req.cookies.token;
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    const token = authHeader?.split(' ')[1];
     
     if (!token) {
         return res.redirect('/login');
@@ -192,12 +193,15 @@ app.get('/inventaris', (req, res, next) => {
         if (decoded.role !== 'admin') {
             return res.redirect('/');
         }
-        // If verification successful, serve the page
-        res.sendFile(path.join(__dirname, 'public', 'inventaris.html'));
+        next();
     } catch (error) {
         console.error('Token verification failed:', error);
         return res.redirect('/login');
     }
+});
+
+app.get('/inventaris', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'inventaris.html'));
 });
 
 // Proxy untuk Logout
