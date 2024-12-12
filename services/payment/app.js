@@ -133,6 +133,9 @@ app.post('/api/payments', authenticateUser, async (req, res) => {
             ['paid', order_id]
         );
 
+        // After successful payment processing
+        await sendPaymentSuccessMessage(order_id, userEmail, order[0].total_price);
+
         res.status(201).json({
             message: 'Pembayaran berhasil',
             payment_id: result.insertId
@@ -247,6 +250,63 @@ app.get('/test-rabbit', async (req, res) => {
         res.status(500).json({ message: 'RabbitMQ test failed.', error: error.message });
     }
 });
+
+// Add this after payment cancellation
+const sendPaymentCancelMessage = async (orderId, userEmail) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('payment_cancelled');
+        channel.sendToQueue('payment_cancelled', Buffer.from(JSON.stringify({
+            orderId,
+            userEmail,
+            timestamp: new Date().toISOString()
+        })));
+    } catch (error) {
+        console.error('Error sending payment cancellation message:', error);
+    }
+};
+
+// When creating queues
+const setupQueues = async (channel) => {
+    await channel.assertQueue('payment_success', { durable: true });
+    await channel.assertQueue('payment_cancelled', { durable: true });
+};
+
+// When sending payment success message
+const sendPaymentSuccessMessage = async (orderId, userEmail, amount) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('payment_success', { durable: true });
+        channel.sendToQueue('payment_success', 
+            Buffer.from(JSON.stringify({
+                orderId,
+                userEmail,
+                amount,
+                timestamp: new Date().toISOString()
+            })),
+            { persistent: true }  // Make message persistent
+        );
+        console.log(`Payment success message sent for order ${orderId}`);
+    } catch (error) {
+        console.error('Error sending payment success message:', error);
+    }
+};
+
+// Add to both services
+const initializeRabbitMQ = async () => {
+    try {
+        await connectRabbitMQ();
+        const channel = getRabbitChannel();
+        await setupQueues(channel);
+        console.log('RabbitMQ queues initialized');
+    } catch (error) {
+        console.error('Failed to initialize RabbitMQ:', error);
+        process.exit(1);
+    }
+};
+
+// Call on startup
+initializeRabbitMQ();
 
 // Jalankan Payment Service
 const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;

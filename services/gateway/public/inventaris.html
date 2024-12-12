@@ -701,7 +701,7 @@
                         </div>
                         <div class="form-group">
                             <label>Price</label>
-                            <input type="number" name="price" required>
+                            <input type="number" name="price">
                         </div>
                         <div class="button-group">
                             <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>
@@ -806,19 +806,77 @@
                             const currentPrice = button.dataset.price;
                             
                             const editForm = document.getElementById('edit-form');
-                            if (!editForm) {
-                                console.error('Edit form not found');
-                                return;
+                            if (editForm) {
+                                editForm.addEventListener('submit', async (e) => {
+                                    e.preventDefault();
+                                    const formData = new FormData(e.target);
+
+                                    // Get original values from button dataset
+                                    const originalPrice = parseInt(button.dataset.price);
+                                    const originalStock = parseInt(button.dataset.stock);
+                                    const itemName = button.dataset.name;
+
+                                    // Get form values
+                                    const stockChange = parseInt(formData.get('stock')); // This is the change amount
+                                    const priceInput = formData.get('price');
+                                    
+                                    try {
+                                        const token = localStorage.getItem('token');
+                                        const userId = localStorage.getItem('userId');
+                                        
+                                        if (!token || !userId) {
+                                            throw new Error('Authentication required');
+                                        }
+
+                                        // If stock was changed, update stock
+                                        if (stockChange !== 0) {
+                                            const stockResponse = await fetch('/api/products/stock', {
+                                                method: 'PATCH',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`,
+                                                    'user-id': userId
+                                                },
+                                                body: JSON.stringify({
+                                                    item_name: itemName,
+                                                    stock: stockChange
+                                                })
+                                            });
+
+                                            if (!stockResponse.ok) {
+                                                throw new Error('Failed to update stock');
+                                            }
+                                        }
+
+                                        // If price was entered, update price
+                                        if (priceInput.trim() !== '') {
+                                            const priceResponse = await fetch('/api/products/price', {
+                                                method: 'PATCH',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`,
+                                                    'user-id': userId
+                                                },
+                                                body: JSON.stringify({
+                                                    item_name: itemName,
+                                                    price: parseInt(priceInput)
+                                                })
+                                            });
+
+                                            if (!priceResponse.ok) {
+                                                throw new Error('Failed to update price');
+                                            }
+                                        }
+
+                                        alert('Product updated successfully');
+                                        closeEditModal();
+                                        loadInventory();
+                                    } catch (error) {
+                                        console.error('Error updating product:', error);
+                                        alert('Error updating product: ' + error.message);
+                                    }
+                                });
                             }
-
-                            // Populate edit form
-                            const nameInput = editForm.querySelector('input[name="item_name"]');
-                            const stockInput = editForm.querySelector('input[name="stock"]');
-                            const priceInput = editForm.querySelector('input[name="price"]');
-
-                            if (nameInput) nameInput.value = itemName;
-                            if (stockInput) stockInput.value = currentStock;
-                            if (priceInput) priceInput.value = currentPrice;
                             
                             // Show edit modal
                             const editModal = document.getElementById('edit-modal');
@@ -840,11 +898,6 @@
                     }
                 };
 
-                // Function to close edit modal
-                const closeEditModal = () => {
-                    document.getElementById('edit-modal').classList.remove('active');
-                    document.getElementById('edit-form').reset();
-                };
                 
                 // Load stats function
                 const loadStats = async () => {
@@ -876,13 +929,28 @@
                 // Load inventory function
                 const loadInventory = async () => {
                     try {
-                        const response = await fetch('/api/inventory', { headers });
+                        // Get token from URL or localStorage
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const token = urlParams.get('token') || localStorage.getItem('token');
+                        
+                        if (!token) {
+                            throw new Error('Authentication required');
+                        }
+
+                        const response = await fetch('/api/products', {
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'user-id': localStorage.getItem('userId')
+                            }
+                        });
+
                         if (!response.ok) {
                             if (response.status === 401 || response.status === 403) {
                                 throw new Error('Authentication required');
                             }
                             throw new Error('Failed to load inventory');
                         }
+
                         const inventoryData = await response.json();
                         
                         // Apply filters
@@ -1024,6 +1092,54 @@
                     }
                 };
 
+                const addProductForm = document.getElementById('add-product-form');
+                    if (addProductForm) {
+                        addProductForm.addEventListener('submit', async (e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.target);
+                            const data = Object.fromEntries(formData.entries());
+
+                            try {
+                                const urlParams = new URLSearchParams(window.location.search);
+                                const token = urlParams.get('token') || localStorage.getItem('token');
+                                const userId = localStorage.getItem('userId');
+
+                                if (!token || !userId) {
+                                    throw new Error('Authentication required');
+                                }
+
+                                // Convert numeric fields
+                                data.price = Number(data.price);
+                                data.stock_quantity = Number(data.stock_quantity);
+                                if (data.min_watt) data.min_watt = Number(data.min_watt);
+
+                                const response = await fetch('/api/products', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`,
+                                        'user-id': userId
+                                    },
+                                    body: JSON.stringify(data)
+                                });
+
+                                if (!response.ok) {
+                                    if (response.status === 401 || response.status === 403) {
+                                        throw new Error('Authentication required');
+                                    }
+                                    throw new Error('Failed to add product');
+                                }
+
+                                alert('Product added successfully');
+                                closeAddModal();
+                                await loadInventory(); // Now this should work
+                            } catch (error) {
+                                console.error('Error adding product:', error);
+                                alert('Error adding product: ' + error.message);
+                            }
+                        });
+                    }
+
                 // Set up profile menu and picture
                 const profilePicture = document.getElementById('profile-picture');
                 const dropdownMenu = document.getElementById('dropdown-menu');
@@ -1085,12 +1201,14 @@
         const itemTypeSelect = addProductForm.querySelector('select[name="item_type"]');
 
         const closeAddModal = () => {
-            addProductModal.classList.remove('active');
-            addProductForm.reset();
-            document.querySelectorAll('.conditional-field').forEach(field => {
-                field.style.display = 'none';
-                field.querySelector('input, textarea').required = false;
-            });
+            const addProductModal = document.getElementById('add-product-modal');
+            if (addProductModal) {
+                addProductModal.classList.remove('active');
+            }
+            const addProductForm = document.getElementById('add-product-form');
+            if (addProductForm) {
+                addProductForm.reset();
+            }
         };
 
         addProductBtn.addEventListener('click', () => {
@@ -1143,41 +1261,6 @@
             }
         });
 
-        // Handle form submission
-        addProductForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(addProductForm);
-            const data = Object.fromEntries(formData.entries());
-
-            // Convert numeric fields
-            data.price = Number(data.price);
-            data.stock_quantity = Number(data.stock_quantity);
-            if (data.min_watt) data.min_watt = Number(data.min_watt);
-
-            try {
-                const response = await fetch('/api/inventory', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'user-id': localStorage.getItem('userId')
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to add product');
-                }
-
-                alert('Product added successfully');
-                closeAddModal();
-                loadInventory(); // Refresh the inventory list
-            } catch (error) {
-                console.error('Error adding product:', error);
-                alert('Error adding product: ' + error.message);
-            }
-        });
-
         // Tab switching functionality
         const tabButtons = document.querySelectorAll('.tab-btn');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -1198,6 +1281,18 @@
                 }
             });
         });
+
+        // Function to close edit modal
+        const closeEditModal = () => {
+            const editModal = document.getElementById('edit-modal');
+            if (editModal) {
+                editModal.classList.remove('active');
+            }
+            const editForm = document.getElementById('edit-form');
+            if (editForm) {
+                editForm.reset();
+            }
+        };
 
         // Load orders function
         const loadOrders = async () => {

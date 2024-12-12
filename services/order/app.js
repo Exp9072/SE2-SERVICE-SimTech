@@ -860,13 +860,16 @@ app.get('/orders/:orderId/items', authenticateUser, async (req, res) => {
 const sendOrderCreated = async (orderId, email, totalPrice) => {
     try {
         const channel = getRabbitChannel();
-        await channel.assertQueue('order_created');
-        channel.sendToQueue('order_created', Buffer.from(JSON.stringify({
-            orderId,
-            email,
-            totalPrice,
-            timestamp: new Date().toISOString()
-        })));
+        await channel.assertQueue('order_created', { durable: true });
+        channel.sendToQueue('order_created', 
+            Buffer.from(JSON.stringify({
+                orderId,
+                email,
+                totalPrice,
+                timestamp: new Date().toISOString()
+            })),
+            { persistent: true }  // Make message persistent
+        );
         console.log(`New order notification sent: Order ${orderId}`);
     } catch (error) {
         console.error('Error sending order creation message:', error);
@@ -876,11 +879,14 @@ const sendOrderCreated = async (orderId, email, totalPrice) => {
 const sendOrderDeleted = async (orderId) => {
     try {
         const channel = getRabbitChannel();
-        await channel.assertQueue('order_deleted');
-        channel.sendToQueue('order_deleted', Buffer.from(JSON.stringify({
-            orderId,
-            timestamp: new Date().toISOString()
-        })));
+        await channel.assertQueue('order_deleted', { durable: true });
+        channel.sendToQueue('order_deleted', 
+            Buffer.from(JSON.stringify({
+                orderId,
+                timestamp: new Date().toISOString()
+            })),
+            { persistent: true }  // Make message persistent
+        );
         console.log(`Order deletion notification sent: Order ${orderId}`);
     } catch (error) {
         console.error('Error sending order deletion message:', error);
