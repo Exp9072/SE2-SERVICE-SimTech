@@ -8,6 +8,14 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
+// Ensure JWT_SECRET is available
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET environment variable is not set!');
+    process.exit(1);
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const app = express();
 app.use(morgan('dev'));
 
@@ -25,7 +33,7 @@ const authenticateJWT = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
         console.log('Decoded token:', decoded);
         next();
@@ -196,24 +204,44 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-app.get('/inventaris', (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
+// Middleware to check auth for protected routes
+const checkAuth = async (req, res, next) => {
+    const token = req.query.token || req.headers.authorization?.split(' ')[1];
+    
     if (!token) {
         return res.redirect('/login');
     }
-    
+
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== 'admin') {
+        const response = await fetch('http://user-service:3001/auth/user', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        const data = await response.json();
+
+        if (!data.success || !data.user) {
+            return res.redirect('/login');
+        }
+
+        // For admin-only routes, check role
+        if (req.adminOnly && data.user.role !== 'admin') {
             return res.redirect('/');
         }
+
+        req.user = data.user;
         next();
     } catch (error) {
-        return res.redirect('/login');
+        console.error('Auth check error:', error);
+        res.redirect('/login');
     }
-});
+};
 
-app.get('/inventaris', (req, res) => {
+// Protected route for inventaris (admin only)
+app.get('/inventaris', (req, res, next) => {
+    req.adminOnly = true;
+    next();
+}, checkAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'inventaris.html'));
 });
 
@@ -460,27 +488,149 @@ app.use('/api/admin/orders', proxy('http://order-service:3003', {
 app.use('/api/inventory', proxy('http://product-service:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];
-        const token = srcReq.headers.authorization;
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
         
-        if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
-        }
+        // Get token from either header or query
+        const token = srcReq.headers.authorization?.split(' ')[1] || srcReq.query?.token;
         
         if (!token) {
             throw new Error('Missing authorization token');
         }
-        
-        proxyReqOpts.headers['user-id'] = userId;
-        proxyReqOpts.headers['authorization'] = token;
-        return proxyReqOpts;
+
+        try {
+            // Verify and decode token
+            const decoded = jwt.verify(token, JWT_SECRET);
+            
+            // Set both headers
+            proxyReqOpts.headers['authorization'] = `Bearer ${token}`;
+            proxyReqOpts.headers['user-id'] = decoded.id;
+            
+            // Ensure admin role for inventory access
+            if (decoded.role !== 'admin') {
+                throw new Error('Admin access required');
+            }
+            
+            return proxyReqOpts;
+        } catch (error) {
+            console.error('Token verification error:', error);
+            throw new Error(error.message);
+        }
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+        if (proxyRes.statusCode === 401 || proxyRes.statusCode === 403) {
+            userRes.status(proxyRes.statusCode);
+            return JSON.stringify({ message: 'Unauthorized access' });
+        }
+        return proxyResData;
     },
     onError: (err, req, res) => {
         console.error('Inventory proxy error:', err);
-        res.status(500).json({ 
-            message: err.message || 'Error proxying inventory request',
-            error: err.toString()
-        });
+        if (err.message.includes('Admin access required')) {
+            res.status(403).json({ message: 'Admin access required' });
+        } else if (err.message.includes('token')) {
+            res.status(401).json({ message: 'Authentication required' });
+        } else {
+            res.status(500).json({ 
+                message: 'Error processing inventory request',
+                error: err.message
+            });
+        }
+    }
+}));
+
+// Proxy for inventory stats
+app.use('/api/inventory/stats', proxy('http://inventory-service:3002', {
+    proxyReqPathResolver: () => '/api/inventory/stats',
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (srcReq.headers.authorization || srcReq.query?.token) {
+            proxyReqOpts.headers['authorization'] = srcReq.headers.authorization || `Bearer ${srcReq.query.token}`;
+        }
+        if (srcReq.headers['user-id']) {
+            proxyReqOpts.headers['user-id'] = srcReq.headers['user-id'];
+        } else if (srcReq.query?.token) {
+            // Extract user ID from JWT token
+            const token = srcReq.query.token;
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                proxyReqOpts.headers['user-id'] = decoded.id;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+            }
+        }
+        return proxyReqOpts;
+    }
+}));
+
+// Proxy for inventory history
+app.use('/api/inventory/history', proxy('http://inventory-service:3002', {
+    proxyReqPathResolver: () => '/api/inventory/history',
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (srcReq.headers.authorization || srcReq.query?.token) {
+            proxyReqOpts.headers['authorization'] = srcReq.headers.authorization || `Bearer ${srcReq.query.token}`;
+        }
+        if (srcReq.headers['user-id']) {
+            proxyReqOpts.headers['user-id'] = srcReq.headers['user-id'];
+        } else if (srcReq.query?.token) {
+            // Extract user ID from JWT token
+            const token = srcReq.query.token;
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                proxyReqOpts.headers['user-id'] = decoded.id;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+            }
+        }
+        return proxyReqOpts;
+    }
+}));
+
+// Proxy for inventory
+app.use('/api/inventory', proxy('http://inventory-service:3002', {
+    proxyReqPathResolver: (req) => `/api/inventory${req.url}`,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (srcReq.headers.authorization || srcReq.query?.token) {
+            proxyReqOpts.headers['authorization'] = srcReq.headers.authorization || `Bearer ${srcReq.query.token}`;
+        }
+        if (srcReq.headers['user-id']) {
+            proxyReqOpts.headers['user-id'] = srcReq.headers['user-id'];
+        } else if (srcReq.query?.token) {
+            // Extract user ID from JWT token
+            const token = srcReq.query.token;
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                proxyReqOpts.headers['user-id'] = decoded.id;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+            }
+        }
+        return proxyReqOpts;
+    }
+}));
+
+// Proxy for admin orders
+app.use('/api/admin/orders', proxy('http://order-service:3003', {
+    proxyReqPathResolver: (req) => `/api/admin/orders${req.url}`,
+    proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        if (srcReq.headers.authorization || srcReq.query?.token) {
+            proxyReqOpts.headers['authorization'] = srcReq.headers.authorization || `Bearer ${srcReq.query.token}`;
+        }
+        if (srcReq.headers['user-id']) {
+            proxyReqOpts.headers['user-id'] = srcReq.headers['user-id'];
+        } else if (srcReq.query?.token) {
+            // Extract user ID from JWT token
+            const token = srcReq.query.token;
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                proxyReqOpts.headers['user-id'] = decoded.id;
+            } catch (error) {
+                console.error('Error decoding token:', error);
+            }
+        }
+        return proxyReqOpts;
     }
 }));
 

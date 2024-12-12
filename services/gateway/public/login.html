@@ -255,8 +255,12 @@
                     localStorage.setItem('userRole', data.user.role);
                     localStorage.setItem('token', data.token);
                     
-                    // Redirect based on role
-                    window.location.href = '/';
+                    // Redirect based on role with token
+                    if (data.user.role === 'admin') {
+                        window.location.href = `/inventaris?token=${data.token}`;
+                    } else {
+                        window.location.href = `/?token=${data.token}`;
+                    }
                 } else {
                     alert(data.message || 'Login gagal');
                 }

@@ -282,8 +282,11 @@ app.get(
             console.log('Session after Google Login:', req.session);
             console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE);
             
-            // Redirect with token
-            res.redirect(`http://192.168.0.5:8080?token=${token}`);
+            // Redirect based on role
+            const redirectUrl = userData.role === 'admin' 
+                ? `http://192.168.0.5:8080/inventaris?token=${token}`
+                : `http://192.168.0.5:8080?token=${token}`;
+            res.redirect(redirectUrl);
         } catch (error) {
             console.error('OAuth callback error:', error);
             res.redirect('/');
@@ -346,8 +349,11 @@ app.get('/auth/github/callback',
 
             console.log('Session saved with user:', req.session.user);
             
-            // Redirect with token
-            res.redirect(`http://192.168.0.5:8080?token=${token}`);
+            // Redirect based on role
+            const redirectUrl = userData.role === 'admin' 
+                ? `http://192.168.0.5:8080/inventaris?token=${token}`
+                : `http://192.168.0.5:8080?token=${token}`;
+            res.redirect(redirectUrl);
         } catch (error) {
             console.error('GitHub callback error:', error);
             res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');

@@ -220,57 +220,201 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            overflow-y: auto;
         }
 
         .modal.active {
             display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
         }
 
         .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             width: 90%;
-            max-width: 500px;
+            max-width: 800px;
+            margin: 20px auto;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background-color: #f8f9fa;
+            padding: 20px 25px;
+            border-bottom: 1px solid #e9ecef;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background-color: #e9ecef;
+            color: #333;
+        }
+
+        .modal form {
+            padding: 25px 35px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            padding: 0 10px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            position: relative;
+            width: 100%;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            color: #444;
+            font-weight: 500;
+        }
+
+        .form-group label.required::after {
+            content: '*';
+            color: #dc3545;
+            margin-left: 4px;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-sizing: border-box;
         }
 
-        .button-group {
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #017cff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(1, 124, 255, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            padding: 0 5px;
+        }
+
+        .form-section-title {
+            font-size: 1.1rem;
+            color: #444;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .btn-group {
             display: flex;
-            gap: 10px;
             justify-content: flex-end;
-            margin-top: 20px;
+            gap: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
         }
 
-        .edit-btn, .submit-btn {
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background-color: #e9ecef;
+            color: #444;
+        }
+
+        .btn-secondary:hover {
+            background-color: #dee2e6;
+        }
+
+        .btn-primary {
             background-color: #017cff;
             color: white;
         }
 
-        .cancel-btn {
-            background-color: #dc3545;
-            color: white;
+        .btn-primary:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .conditional-field {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .tab-buttons {
@@ -366,6 +510,23 @@
             border-radius: 4px;
             font-size: 0.9em;
         }
+
+        .positive-change {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .negative-change {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .status-shipped {
+            background-color: #28a745;
+            color: white;
+        }
+        .status-pending {
+            background-color: #ffc107;
+            color: black;
+        }
     </style>
 </head>
 <body>
@@ -403,22 +564,22 @@
 
             <div class="filters">
                 <select id="type-filter">
-                    <option value="">All Types</option>
+                    <option value="all">All Types</option>
                     <option value="Processor">Processor</option>
-                    <option value="Graphics-Card">Graphics Card</option>
-                    <option value="RAM">RAM</option>
                     <option value="Motherboard">Motherboard</option>
+                    <option value="Memory">Memory</option>
                     <option value="Storage">Storage</option>
-                    <option value="PSU">PSU</option>
-                    <option value="Cooling">Cooling</option>
-                    <option value="Casing">Casing</option>
+                    <option value="Graphics-Card">Graphics Card</option>
+                    <option value="Power-Supply">Power Supply</option>
+                    <option value="Case">Case</option>
+                    <option value="PC-Ready">PC Ready</option>
                 </select>
                 <select id="stock-filter">
-                    <option value="">All Stock Levels</option>
-                    <option value="low">Low Stock (< 5)</option>
-                    <option value="ok">Normal Stock (≥ 5)</option>
+                    <option value="all">All Stock</option>
+                    <option value="low">Low Stock</option>
+                    <option value="out">Out of Stock</option>
                 </select>
-                <button id="add-product-btn" class="action-btn">Add New Product</button>
+                <button id="add-product-btn" class="btn btn-primary">Add New Product</button>
             </div>
 
             <div class="inventory-table">
@@ -454,56 +615,88 @@
 
             <div id="add-product-modal" class="modal">
                 <div class="modal-content">
-                    <h2>Add New Product</h2>
+                    <div class="modal-header">
+                        <h2 class="modal-title">Add New Product</h2>
+                        <button type="button" class="close-btn" id="cancel-add-btn">&times;</button>
+                    </div>
                     <form id="add-product-form">
-                        <div class="form-group">
-                            <label>Product Name</label>
-                            <input type="text" name="item_name" required>
+                        <div class="form-section">
+                            <h3 class="form-section-title">Basic Information</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="item_name" class="required">Product Name</label>
+                                    <input type="text" name="item_name" id="item_name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="item_type" class="required">Product Type</label>
+                                    <select name="item_type" id="item_type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="Processor">Processor</option>
+                                        <option value="Motherboard">Motherboard</option>
+                                        <option value="Memory">Memory</option>
+                                        <option value="Storage">Storage</option>
+                                        <option value="Graphics-Card">Graphics Card</option>
+                                        <option value="Power-Supply">Power Supply</option>
+                                        <option value="Case">Case</option>
+                                        <option value="PC-Ready">PC Ready</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="brand" class="required">Brand</label>
+                                    <input type="text" name="brand" id="brand" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="model" class="required">Model</label>
+                                    <input type="text" name="model" id="model" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="price" class="required">Price (Rp)</label>
+                                    <input type="number" name="price" id="price" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="stock_quantity" class="required">Stock Quantity</label>
+                                    <input type="number" name="stock_quantity" id="stock_quantity" required min="0">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="image_url" class="required">Image URL</label>
+                                    <input type="text" name="image_url" id="image_url" required>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Type</label>
-                            <select name="item_type" required>
-                                <option value="Processor">Processor</option>
-                                <option value="Graphics-Card">Graphics Card</option>
-                                <option value="RAM">RAM</option>
-                                <option value="Motherboard">Motherboard</option>
-                                <option value="Storage">Storage</option>
-                                <option value="PSU">PSU</option>
-                                <option value="Cooling">Cooling</option>
-                                <option value="Casing">Casing</option>
-                            </select>
+
+                        <div class="form-section">
+                            <h3 class="form-section-title">Technical Specifications</h3>
+                            <div class="form-grid">
+                                <div class="form-group conditional-field" id="socket-type-group">
+                                    <label for="socket_type" class="required">Socket Type</label>
+                                    <input type="text" name="socket_type" id="socket_type">
+                                </div>
+                                <div class="form-group conditional-field" id="ram-type-group">
+                                    <label for="ram_type" class="required">RAM Type</label>
+                                    <input type="text" name="ram_type" id="ram_type">
+                                </div>
+                                <div class="form-group conditional-field" id="pci-version-group">
+                                    <label for="pci_version">PCI Version</label>
+                                    <input type="text" name="pci_version" id="pci_version">
+                                </div>
+                                <div class="form-group conditional-field" id="min-watt-group">
+                                    <label for="min_watt" class="required">Minimum Power Supply (Watts)</label>
+                                    <input type="number" name="min_watt" id="min_watt" min="0">
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Brand</label>
-                            <input type="text" name="brand" required>
+
+                        <div class="form-section">
+                            <h3 class="form-section-title">Additional Information</h3>
+                            <div class="form-group conditional-field" id="details-group">
+                                <label for="details" class="required">Details</label>
+                                <textarea name="details" id="details" rows="4"></textarea>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Model</label>
-                            <input type="text" name="model" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Price</label>
-                            <input type="number" name="price" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Stock</label>
-                            <input type="number" name="stock_quantity" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Image URL</label>
-                            <input type="text" name="image_url" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Details</label>
-                            <textarea name="details"></textarea>
-                        </div>
-                        <div class="form-group" id="min-watt-group" style="display: none;">
-                            <label>Minimum Power Supply (Watts)</label>
-                            <input type="number" name="min_watt" min="0">
-                        </div>
-                        <div class="button-group">
-                            <button type="button" class="cancel-btn" id="cancel-add-btn">Cancel</button>
-                            <button type="submit" class="submit-btn">Add Product</button>
+
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-secondary" id="cancel-add-btn">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Product</button>
                         </div>
                     </form>
                 </div>
@@ -567,515 +760,434 @@
     </div>
 
     <script>
-        // Define modal functions globally
-        function closeAddModal() {
-            document.getElementById('add-product-modal').classList.remove('active');
-            const minWattGroup = document.getElementById('min-watt-group');
-            const minWattInput = document.querySelector('input[name="min_watt"]');
-            minWattGroup.style.display = 'none';
-            minWattInput.required = false;
-            minWattInput.value = '';
-            // Clear all form fields
-            document.getElementById('add-product-form').reset();
-        }
-
-        function openEditModal(itemName, currentStock, currentPrice) {
-            const modal = document.getElementById('edit-modal');
-            const form = document.getElementById('edit-form');
-            form.elements['item_name'].value = itemName;
-            form.elements['stock'].value = currentStock;
-            form.elements['price'].value = currentPrice;
-            modal.classList.add('active');
-        }
-
-        function closeEditModal() {
-            document.getElementById('edit-modal').classList.remove('active');
-        }
-
         document.addEventListener('DOMContentLoaded', async () => {
-            const userId = localStorage.getItem('userId');
-            if (!userId) {
-                alert('Please login first');
-                window.location.href = '/login';
-                return;
-            }
-
-            // Load inventory function
-            const loadInventory = async () => {
-                try {
-                    // Get filter values
-                    const typeFilter = document.getElementById('type-filter').value;
-                    const stockFilter = document.getElementById('stock-filter').value;
-                    
-                    const response = await fetch('/api/inventory', {
-                        headers: {
-                            'user-id': userId
-                        }
-                    });
-                    const data = await response.json();
-
-                    // Apply filters
-                    let filteredData = data;
-                    
-                    // Filter by type
-                    if (typeFilter && typeFilter !== 'all') {
-                        filteredData = filteredData.filter(item => item.item_type === typeFilter);
-                    }
-                    
-                    // Filter by stock level
-                    if (stockFilter === 'low') {
-                        filteredData = filteredData.filter(item => item.stock_quantity < 5);
-                    } else if (stockFilter === 'out') {
-                        filteredData = filteredData.filter(item => item.stock_quantity === 0);
-                    }
-
-                    const tbody = document.getElementById('inventory-body');
-                    tbody.innerHTML = filteredData.map(item => `
-                        <tr>
-                            <td>${item.item_name}</td>
-                            <td>${item.item_type}</td>
-                            <td class="${item.stock_quantity < 5 ? 'low-stock' : ''}">${item.stock_quantity}</td>
-                            <td>Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</td>
-                            <td>
-                                <span class="status-badge ${item.stock_quantity < 5 ? 'status-low' : 'status-ok'}">
-                                    ${item.stock_quantity < 5 ? 'Low Stock' : 'In Stock'}
-                                </span>
-                            </td>
-                            <td>
-                                <button class="edit-btn" 
-                                    data-name="${item.item_name}" 
-                                    data-stock="${item.stock_quantity}" 
-                                    data-price="${item.price}">
-                                    Edit
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('');
-
-                    // Add event listeners to edit buttons
-                    addEditButtonListeners();
-                } catch (error) {
-                    console.error('Error loading inventory:', error);
-                }
-            };
-
-            // Function to add edit button listeners
-            const addEditButtonListeners = () => {
-                document.querySelectorAll('.edit-btn').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const itemName = button.getAttribute('data-name');
-                        const currentStock = parseInt(button.getAttribute('data-stock'));
-                        const currentPrice = parseInt(button.getAttribute('data-price'));
-                        openEditModal(itemName, currentStock, currentPrice);
-                    });
-                });
-            };
-
-            // Add filter change event listeners
-            document.getElementById('type-filter').addEventListener('change', loadInventory);
-            document.getElementById('stock-filter').addEventListener('change', loadInventory);
-
-            // Initial load
-            loadInventory();
-
-            const loadStats = async () => {
-                try {
-                    const response = await fetch('/api/inventory/stats', {
-                        headers: {
-                            'user-id': userId
-                        }
-                    });
-                    if (!response.ok) throw new Error('Failed to load stats');
-                    
-                    const stats = await response.json();
-                    document.getElementById('total-products').textContent = stats.totalProducts;
-                    document.getElementById('low-stock').textContent = stats.lowStockCount;
-                    document.getElementById('total-value').textContent = 
-                        `Rp ${new Intl.NumberFormat('id-ID').format(stats.totalValue)}`;
-                } catch (error) {
-                    console.error('Error loading stats:', error);
-                }
-            };
-
-            const loadHistory = async () => {
-                try {
-                    const response = await fetch('/api/inventory/history', {
-                        headers: {
-                            'user-id': userId
-                        }
-                    });
-                    if (!response.ok) throw new Error('Failed to load history');
-                    
-                    const history = await response.json();
-                    const tbody = document.getElementById('history-body');
-                    tbody.innerHTML = history.map(item => `
-                        <tr>
-                            <td>${new Date(item.order_date).toLocaleDateString()}</td>
-                            <td>${item.item_name}</td>
-                            <td>${item.quantity}</td>
-                            <td>${item.status}</td>
-                        </tr>
-                    `).join('');
-                } catch (error) {
-                    console.error('Error loading history:', error);
-                }
-            };
-
-            // Initialize
-            await loadStats();
-            await loadInventory();
-            await loadHistory();
-
-            // Profile menu
-            const profilePicture = document.getElementById('profile-picture');
-            const dropdownMenu = document.getElementById('dropdown-menu');
-            const logoutBtn = document.getElementById('logout-btn');
-
-            profilePicture.addEventListener('click', () => {
-                dropdownMenu.classList.toggle('active');
-            });
-
-            logoutBtn.addEventListener('click', async () => {
-                await fetch('/logout', { method: 'POST' });
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('token');
-                window.location.href = '/';
-            });
-
-            document.getElementById('add-product-btn').addEventListener('click', () => {
-                document.getElementById('add-product-modal').classList.add('active');
-            });
-
-            document.getElementById('cancel-add-btn').addEventListener('click', closeAddModal);
-
-            document.querySelector('select[name="item_type"]').addEventListener('change', (e) => {
-                const minWattGroup = document.getElementById('min-watt-group');
-                const minWattInput = document.querySelector('input[name="min_watt"]');
+            try {
+                // Get token from URL or localStorage
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token') || localStorage.getItem('token');
                 
-                if (e.target.value === 'Graphics-Card') {
-                    minWattGroup.style.display = 'block';
-                    minWattInput.required = true;
-                } else {
-                    minWattGroup.style.display = 'none';
-                    minWattInput.required = false;
-                    minWattInput.value = '';
-                }
-            });
-
-            document.getElementById('add-product-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
-
-                if (data.item_type === 'Graphics-Card') {
-                    data.min_watt = parseInt(data.min_watt) || 0;
-                } else {
-                    data.min_watt = null;
+                if (!token) {
+                    alert('Please login first');
+                    window.location.href = '/login';
+                    return;
                 }
 
-                try {
-                    const response = await fetch('/api/products', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'user-id': userId
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    if (response.ok) {
-                        alert('Product added successfully');
-                        closeAddModal();
-                        loadInventory();
-                    } else {
-                        alert('Failed to add product');
-                    }
-                } catch (error) {
-                    console.error('Error adding product:', error);
-                    alert('Error adding product');
-                }
-            });
-
-            document.getElementById('edit-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
-
-                try {
-                    // Update stock
-                    const stockResponse = await fetch('/api/products/stock', {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'user-id': userId
-                        },
-                        body: JSON.stringify({
-                            item_name: data.item_name,
-                            stock: parseInt(data.stock)
-                        })
-                    });
-
-                    // Update price
-                    const priceResponse = await fetch('/api/products/price', {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'user-id': userId
-                        },
-                        body: JSON.stringify({
-                            item_name: data.item_name,
-                            price: parseInt(data.price)
-                        })
-                    });
-
-                    if (stockResponse.ok && priceResponse.ok) {
-                        alert('Product updated successfully');
-                        closeEditModal();
-                        loadInventory();
-                    } else {
-                        alert('Failed to update product');
-                    }
-                } catch (error) {
-                    console.error('Error updating product:', error);
-                    alert('Error updating product');
-                }
-            });
-
-            // Tab switching functionality
-            document.querySelectorAll('.tab-btn').forEach(button => {
-                button.addEventListener('click', () => {
-                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-                    button.classList.add('active');
-                    document.getElementById(`${button.dataset.tab}-tab`).classList.add('active');
-                    if (button.dataset.tab === 'orders') {
-                        loadOrders();
+                // Verify user and role
+                const response = await fetch('/auth/user', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
                     }
                 });
-            });
+                
+                if (!response.ok) {
+                    throw new Error('Authentication failed');
+                }
+                
+                const userData = await response.json();
+                
+                if (!userData.success || !userData.user || userData.user.role !== 'admin') {
+                    alert('Access denied. Admin privileges required.');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                // Store user data
+                localStorage.setItem('userId', userData.user.id);
+                localStorage.setItem('userEmail', userData.user.email);
+                localStorage.setItem('userRole', userData.user.role);
+                localStorage.setItem('token', token);
+                
+                // Set up headers for all fetch requests
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'user-id': userData.user.id
+                };
 
-            // Load orders function
-            const loadOrders = async () => {
-                try {
-                    const statusFilter = document.getElementById('order-status-filter').value;
-                    const paymentFilter = document.getElementById('payment-filter').value;
-                    
-                    // Get JWT token from localStorage
-                    const token = localStorage.getItem('token');
-                    if (!token) {
-                        window.location.href = '/login';
+                // Function to handle edit button clicks
+                const addEditButtonListeners = () => {
+                    const editButtons = document.querySelectorAll('.edit-btn');
+                    if (!editButtons || editButtons.length === 0) {
+                        console.log('No edit buttons found');
                         return;
                     }
-                    
-                    // Build query string
-                    const queryParams = new URLSearchParams();
-                    if (statusFilter && statusFilter !== 'all') {
-                        const dbStatus = statusFilter.toLowerCase();
-                        queryParams.append('status', dbStatus);
-                        console.log('Sending status filter:', dbStatus);
-                    }
-                    if (paymentFilter && paymentFilter !== 'all') {
-                        queryParams.append('payment', paymentFilter);
-                    }
-                    
-                    const queryString = queryParams.toString();
-                    const url = `/api/admin/orders${queryString ? `?${queryString}` : ''}`;
-                    
-                    console.log('Fetching orders with URL:', url);
 
-                    const response = await fetch(url, {
-                        headers: {
-                            'user-id': userId,
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    
-                    if (response.status === 401 || response.status === 403) {
-                        // Token is invalid or expired
-                        localStorage.removeItem('token');
-                        window.location.href = '/login';
-                        return;
-                    }
-                    
-                    if (!response.ok) throw new Error('Failed to load orders');
-                    const orders = await response.json();
-                    console.log('Debug info:', {
-                        filterApplied: statusFilter,
-                        totalOrders: orders.orders.length,
-                        sampleStatuses: orders.orders.slice(0, 3).map(o => o.status)
-                    });
-                    
-                    const tbody = document.getElementById('orders-body');
-                    tbody.innerHTML = '';
-                    
-                    if (!orders.orders || orders.orders.length === 0) {
-                        tbody.innerHTML = `
-                            <tr>
-                                <td colspan="7" style="text-align: center;">No orders found</td>
-                            </tr>
-                        `;
-                        return;
-                    }
-                    
-                    tbody.innerHTML = orders.orders.map(order => `
-                        <tr>
-                            <td>${order.order_id}</td>
-                            <td>${order.email}</td>
-                            <td>${new Date(order.order_date).toLocaleDateString()}</td>
-                            <td>Rp ${new Intl.NumberFormat('id-ID').format(order.total_price)}</td>
-                            <td>
-                                <span class="status-badge ${getPaymentStatusClass(order.payment)}">
-                                    ${order.payment}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="status-badge ${
-                                    order.status === 'Sudah Dikirim' ? 'delivered' : 
-                                    order.status === 'Sedang Dikirim' ? 'shipping' :
-                                    order.status === 'Belum Dikirim' ? 'pending' : ''
-                                }">${order.status}</span>
-                                ${order.payment === 'paid' && order.status === 'Sedang Dikirim' ? 
-                                    `<button class="edit-status-btn" data-order-id="${order.order_id}">
-                                        Update to Sudah Dikirim
-                                    </button>` : ''
-                                }
-                            </td>
-                            <td>
-                                ${getOrderActions(order)}
-                            </td>
-                        </tr>
-                    `).join('');
-
-                    // Add event listeners to edit status buttons
-                    document.querySelectorAll('.edit-status-btn').forEach(button => {
-                        button.addEventListener('click', async (e) => {
-                            const orderId = e.target.dataset.orderId;
-                            const newStatus = 'sudah dikirim';
+                    editButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            const itemName = button.dataset.name;
+                            const currentStock = button.dataset.stock;
+                            const currentPrice = button.dataset.price;
                             
-                            try {
-                                const response = await fetch(`/api/orders/${orderId}/status`, {
-                                    method: 'PATCH',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'user-id': userId
-                                    },
-                                    body: JSON.stringify({ status: newStatus })
-                                });
+                            const editForm = document.getElementById('edit-form');
+                            if (!editForm) {
+                                console.error('Edit form not found');
+                                return;
+                            }
 
-                                if (response.ok) {
-                                    alert('Order status updated successfully');
-                                    // Update the display
-                                    const td = button.parentElement;
-                                    td.innerHTML = `<span class="status-badge delivered">${newStatus}</span>`;
-                                    // Reload orders to refresh the view with current filters
-                                    loadOrders();
-                                } else {
-                                    alert('Failed to update order status');
-                                    loadOrders();
-                                }
-                            } catch (error) {
-                                console.error('Error updating order status:', error);
-                                alert('Error updating order status');
-                                loadOrders();
+                            // Populate edit form
+                            const nameInput = editForm.querySelector('input[name="item_name"]');
+                            const stockInput = editForm.querySelector('input[name="stock"]');
+                            const priceInput = editForm.querySelector('input[name="price"]');
+
+                            if (nameInput) nameInput.value = itemName;
+                            if (stockInput) stockInput.value = currentStock;
+                            if (priceInput) priceInput.value = currentPrice;
+                            
+                            // Show edit modal
+                            const editModal = document.getElementById('edit-modal');
+                            if (editModal) {
+                                editModal.classList.add('active');
                             }
                         });
                     });
-
-                    addOrderActionListeners();
-                } catch (error) {
-                    console.error('Error loading orders:', error);
-                    const tbody = document.getElementById('orders-body');
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" style="text-align: center;">Error loading orders</td>
-                        </tr>
-                    `;
-                }
-            };
-
-            const getPaymentStatusClass = (payment) => {
-                switch (payment) {
-                    case 'unpaid': return 'status-unpaid';
-                    case 'paid': return 'status-paid';
-                    default: return '';
-                }
-            };
-
-            const getOrderActions = (order) => {
-                if (order.payment === 'unpaid') {
-                    return `<button class="action-btn delete-btn" data-order-id="${order.order_id}">Delete</button>`;
-                }
-                return '';
-            };
-
-            const addOrderActionListeners = () => {
-                // Delete unpaid orders
-                document.querySelectorAll('.delete-btn').forEach(button => {
-                    button.addEventListener('click', async () => {
-                        if (confirm('Are you sure you want to delete this unpaid order?')) {
-                            try {
-                                const response = await fetch(`/api/orders/${button.dataset.orderId}`, {
-                                    method: 'DELETE',
-                                    headers: {
-                                        'user-id': userId
-                                    }
-                                });
-
-                                if (response.ok) {
-                                    alert('Order deleted successfully');
-                                    loadOrders();
-                                } else {
-                                    alert('Failed to delete order');
-                                }
-                            } catch (error) {
-                                console.error('Error deleting order:', error);
-                                alert('Error deleting order');
+                    
+                    // Add close modal functionality
+                    const cancelBtn = document.getElementById('cancel-edit-btn');
+                    if (cancelBtn) {
+                        cancelBtn.addEventListener('click', () => {
+                            const editModal = document.getElementById('edit-modal');
+                            if (editModal) {
+                                editModal.classList.remove('active');
                             }
-                        }
-                    });
-                });
+                        });
+                    }
+                };
 
-                // Mark orders as delivered
-                document.querySelectorAll('.deliver-btn').forEach(button => {
-                    button.addEventListener('click', async () => {
-                        try {
-                            const response = await fetch(`/api/orders/${button.dataset.orderId}/status`, {
-                                method: 'PATCH',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'user-id': userId
-                                },
-                                body: JSON.stringify({ status: 'sudah dikirim' })
+                // Function to close edit modal
+                const closeEditModal = () => {
+                    document.getElementById('edit-modal').classList.remove('active');
+                    document.getElementById('edit-form').reset();
+                };
+                
+                // Load stats function
+                const loadStats = async () => {
+                    try {
+                        const response = await fetch('/api/inventory/stats', { headers });
+                        if (!response.ok) {
+                            if (response.status === 401 || response.status === 403) {
+                                throw new Error('Authentication required');
+                            }
+                            throw new Error('Failed to load stats');
+                        }
+                        const stats = await response.json();
+                        document.getElementById('total-products').textContent = stats.totalProducts || 0;
+                        document.getElementById('low-stock').textContent = stats.lowStockItems || 0;
+                        document.getElementById('total-value').textContent = `Rp ${new Intl.NumberFormat('id-ID').format(stats.totalValue || 0)}`;
+                    } catch (error) {
+                        console.error('Error loading stats:', error);
+                        if (error.message === 'Authentication required') {
+                            alert('Please login again');
+                            window.location.href = '/login';
+                            return;
+                        }
+                        document.getElementById('total-products').textContent = 'Error';
+                        document.getElementById('low-stock').textContent = 'Error';
+                        document.getElementById('total-value').textContent = 'Error';
+                    }
+                };
+                
+                // Load inventory function
+                const loadInventory = async () => {
+                    try {
+                        const response = await fetch('/api/inventory', { headers });
+                        if (!response.ok) {
+                            if (response.status === 401 || response.status === 403) {
+                                throw new Error('Authentication required');
+                            }
+                            throw new Error('Failed to load inventory');
+                        }
+                        const inventoryData = await response.json();
+                        
+                        // Apply filters
+                        let filteredData = inventoryData;
+                        const typeFilter = document.getElementById('type-filter').value;
+                        const stockFilter = document.getElementById('stock-filter').value;
+                        
+                        if (typeFilter && typeFilter !== 'all') {
+                            filteredData = filteredData.filter(item => item.item_type === typeFilter);
+                        }
+                        
+                        if (stockFilter === 'low') {
+                            filteredData = filteredData.filter(item => item.stock_quantity < 5);
+                        } else if (stockFilter === 'out') {
+                            filteredData = filteredData.filter(item => item.stock_quantity === 0);
+                        }
+                        
+                        const tbody = document.getElementById('inventory-body');
+                        tbody.innerHTML = filteredData.map(item => `
+                            <tr>
+                                <td>${item.item_name}</td>
+                                <td>${item.item_type}</td>
+                                <td class="${item.stock_quantity < 5 ? 'low-stock' : ''}">${item.stock_quantity}</td>
+                                <td>Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</td>
+                                <td>
+                                    <span class="status-badge ${item.stock_quantity < 5 ? 'status-low' : 'status-ok'}">
+                                        ${item.stock_quantity < 5 ? 'Low Stock' : 'In Stock'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="edit-btn" 
+                                        data-name="${item.item_name}" 
+                                        data-stock="${item.stock_quantity}" 
+                                        data-price="${item.price}">
+                                        Edit
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('');
+                        
+                        // Add event listeners to edit buttons
+                        addEditButtonListeners();
+                    } catch (error) {
+                        console.error('Error loading inventory:', error);
+                        if (error.message === 'Authentication required') {
+                            alert('Please login again');
+                            window.location.href = '/login';
+                            return;
+                        }
+                        const tbody = document.getElementById('inventory-body');
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align: center;">Error loading inventory data</td>
+                            </tr>
+                        `;
+                    }
+                };
+                
+                // Load history function
+                const loadHistory = async () => {
+                    try {
+                        const response = await fetch('/api/inventory/history', { headers });
+                        if (!response.ok) {
+                            if (response.status === 401 || response.status === 403) {
+                                throw new Error('Authentication required');
+                            }
+                            throw new Error('Failed to load history');
+                        }
+                        const history = await response.json();
+                        
+                        const tbody = document.getElementById('history-body');
+                        tbody.innerHTML = history.map(item => {
+                            // Format date properly
+                            const date = item.date ? new Date(item.date) : new Date();
+                            const formattedDate = date.toLocaleDateString('id-ID', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
                             });
 
-                            if (response.ok) {
-                                alert('Order marked as delivered');
-                                loadOrders();
-                            } else {
-                                alert('Failed to update order status');
+                            // Handle undefined or null values
+                            const itemName = item.item_name || 'Unknown Product';
+                            const quantityChange = item.quantity_change !== undefined ? item.quantity_change : 'No Change';
+                            const status = item.status || 'Unknown Status';
+
+                            // Add + sign for positive quantity changes
+                            const formattedQuantity = quantityChange > 0 ? `+${quantityChange}` : quantityChange;
+
+                            // Add status badge styling
+                            const statusClass = status.toLowerCase().includes('dikirim') ? 'status-shipped' : 'status-pending';
+
+                            return `
+                                <tr>
+                                    <td>${formattedDate}</td>
+                                    <td>${itemName}</td>
+                                    <td class="${quantityChange > 0 ? 'positive-change' : 'negative-change'}">${formattedQuantity}</td>
+                                    <td><span class="status-badge ${statusClass}">${status}</span></td>
+                                </tr>
+                            `;
+                        }).join('');
+
+                        // Add these styles if not already present
+                        const style = document.createElement('style');
+                        style.textContent = `
+                            .positive-change {
+                                color: #28a745;
+                                font-weight: bold;
                             }
-                        } catch (error) {
-                            console.error('Error updating order status:', error);
-                            alert('Error updating order status');
+                            .negative-change {
+                                color: #dc3545;
+                                font-weight: bold;
+                            }
+                            .status-shipped {
+                                background-color: #28a745;
+                                color: white;
+                            }
+                            .status-pending {
+                                background-color: #ffc107;
+                                color: black;
+                            }
+                        `;
+                        document.head.appendChild(style);
+
+                    } catch (error) {
+                        console.error('Error loading history:', error);
+                        if (error.message === 'Authentication required') {
+                            alert('Please login again');
+                            window.location.href = '/login';
+                            return;
                         }
-                    });
+                        const tbody = document.getElementById('history-body');
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="4" style="text-align: center;">Error loading history data</td>
+                            </tr>
+                        `;
+                    }
+                };
+
+                // Set up profile menu and picture
+                const profilePicture = document.getElementById('profile-picture');
+                const dropdownMenu = document.getElementById('dropdown-menu');
+                const logoutBtn = document.getElementById('logout-btn');
+
+                // Update profile picture
+                profilePicture.src = userData.user.profilePicture || 'images/default-profile.png';
+
+                // Set up profile menu event listeners
+                profilePicture.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdownMenu.classList.toggle('active');
                 });
-            };
 
-            // Add event listeners for filters
-            document.getElementById('order-status-filter').addEventListener('change', () => {
-                console.log('Status filter changed to:', document.getElementById('order-status-filter').value);
-                loadOrders();
+                // Close dropdown when clicking outside
+                document.addEventListener('click', () => {
+                    dropdownMenu.classList.remove('active');
+                });
+
+                // Handle logout
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        await fetch('/logout', { method: 'POST' });
+                        localStorage.clear();
+                        window.location.href = '/';
+                    } catch (error) {
+                        console.error('Logout error:', error);
+                        alert('Error during logout');
+                    }
+                });
+
+                // Add filter change event listeners
+                document.getElementById('type-filter').addEventListener('change', loadInventory);
+                document.getElementById('stock-filter').addEventListener('change', loadInventory);
+                
+                // Initialize all data
+                await Promise.allSettled([
+                    loadStats(),
+                    loadInventory(),
+                    loadHistory()
+                ]);
+                
+            } catch (error) {
+                console.error('Error initializing page:', error);
+                if (error.message.includes('authentication') || error.message.includes('unauthorized')) {
+                    alert('Please login again');
+                    window.location.href = '/login';
+                } else {
+                    alert('Some features may not be available. Please refresh the page to try again.');
+                }
+            }
+        });
+
+        // Add Product Modal Functions
+        const addProductBtn = document.getElementById('add-product-btn');
+        const addProductModal = document.getElementById('add-product-modal');
+        const addProductForm = document.getElementById('add-product-form');
+        const cancelAddBtn = document.getElementById('cancel-add-btn');
+        const itemTypeSelect = addProductForm.querySelector('select[name="item_type"]');
+
+        const closeAddModal = () => {
+            addProductModal.classList.remove('active');
+            addProductForm.reset();
+            document.querySelectorAll('.conditional-field').forEach(field => {
+                field.style.display = 'none';
+                field.querySelector('input, textarea').required = false;
+            });
+        };
+
+        addProductBtn.addEventListener('click', () => {
+            addProductModal.classList.add('active');
+        });
+
+        cancelAddBtn.addEventListener('click', closeAddModal);
+
+        // Handle conditional fields based on product type
+        itemTypeSelect.addEventListener('change', () => {
+            const selectedType = itemTypeSelect.value;
+            const socketTypeGroup = document.getElementById('socket-type-group');
+            const ramTypeGroup = document.getElementById('ram-type-group');
+            const pciVersionGroup = document.getElementById('pci-version-group');
+            const minWattGroup = document.getElementById('min-watt-group');
+            const detailsGroup = document.getElementById('details-group');
+
+            // Reset all fields
+            document.querySelectorAll('.conditional-field').forEach(field => {
+                field.style.display = 'none';
+                field.querySelector('input, textarea').required = false;
             });
 
-            document.getElementById('payment-filter').addEventListener('change', () => {
-                console.log('Payment filter changed to:', document.getElementById('payment-filter').value);
-                loadOrders();
-            });
+            // Show relevant fields based on product type
+            switch (selectedType) {
+                case 'Graphics-Card':
+                    minWattGroup.style.display = 'block';
+                    pciVersionGroup.style.display = 'block';
+                    minWattGroup.querySelector('input').required = true;
+                    break;
+                case 'Motherboard':
+                    socketTypeGroup.style.display = 'block';
+                    ramTypeGroup.style.display = 'block';
+                    pciVersionGroup.style.display = 'block';
+                    socketTypeGroup.querySelector('input').required = true;
+                    ramTypeGroup.querySelector('input').required = true;
+                    break;
+                case 'Processor':
+                    socketTypeGroup.style.display = 'block';
+                    socketTypeGroup.querySelector('input').required = true;
+                    break;
+                case 'Memory':
+                    ramTypeGroup.style.display = 'block';
+                    ramTypeGroup.querySelector('input').required = true;
+                    break;
+                case 'PC-Ready':
+                    detailsGroup.style.display = 'block';
+                    detailsGroup.querySelector('textarea').required = true;
+                    break;
+            }
+        });
 
-            // Initial load
-            loadOrders();
+        // Handle form submission
+        addProductForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(addProductForm);
+            const data = Object.fromEntries(formData.entries());
+
+            // Convert numeric fields
+            data.price = Number(data.price);
+            data.stock_quantity = Number(data.stock_quantity);
+            if (data.min_watt) data.min_watt = Number(data.min_watt);
+
+            try {
+                const response = await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'user-id': localStorage.getItem('userId')
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add product');
+                }
+
+                alert('Product added successfully');
+                closeAddModal();
+                loadInventory(); // Refresh the inventory list
+            } catch (error) {
+                console.error('Error adding product:', error);
+                alert('Error adding product: ' + error.message);
+            }
         });
     </script>
 </body>
