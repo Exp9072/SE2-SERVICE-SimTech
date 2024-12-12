@@ -5,21 +5,80 @@ const proxy = require('express-http-proxy');
 const rateLimit = require('express-rate-limit');
 const https = require('https');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 app.use(morgan('dev'));
 
-// HTTPS Configuration
+// Middleware Autentikasi JWT
+const authenticateJWT = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    console.log('Auth check - Headers:', {
+        authorization: req.headers.authorization,
+        token: token ? 'present' : 'missing'
+    });
+    
+    if (!token) {
+        return res.status(401).json({ message: 'Token tidak ditemukan' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        console.log('Decoded token:', decoded);
+        next();
+    } catch (error) {
+        console.error('JWT verification error:', error);
+        return res.status(403).json({ message: 'Token tidak valid' });
+    }
+};
+
+// Middleware untuk memeriksa role admin
+const authenticateAdmin = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+        return res.status(401).json({ message: 'Token tidak ditemukan' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ message: 'Akses ditolak. Hanya admin yang diizinkan.' });
+        }
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(403).json({ message: 'Token tidak valid' });
+    }
+};
+
+// Konfigurasi HTTPS
 const httpsOptions = {
     key: fs.readFileSync(path.join(__dirname, 'serverkey', 'server.key')),
     cert: fs.readFileSync(path.join(__dirname, 'servercrt', 'server.crt'))
 };
 
+// Melindungi rute yang membutuhkan autentikasi
+app.use('/api/admin/*', authenticateAdmin);
+app.use('/api/inventory/*', authenticateAdmin);
+
 // Sajikan file statis
 app.use(express.static(path.join(__dirname, 'public')));
 
-// **1. Rate Limiter Global**
+// Handle JWT errors before routes
+app.use((err, req, res, next) => {
+    if (err.name === 'UnauthorizedError') {
+        return res.status(401).json({ 
+            message: 'Token tidak valid atau tidak ditemukan' 
+        });
+    }
+    next(err);
+});
+
+// **1. Pembatas Rate Global**
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
     max: 1000, // Maksimal 300 permintaan per IP dalam 15 menit
@@ -31,7 +90,7 @@ const globalLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// **2. Throttle per IP**
+// **2. Pembatasan per IP**
 const throttle = (delay) => {
     const requestTimes = {}; // Penyimpanan sementara untuk IP
     return (req, res, next) => {
@@ -49,23 +108,10 @@ const throttle = (delay) => {
     };
 };
 
-// Middleware untuk throttle per IP
+// Middleware untuk pembatasan per IP
 const ipThrottle = throttle(600); // Batasan per IP (600ms antar permintaan)
 
-// **3. Throttle product**
-const productThrottle = throttle(50); // Batasan lebih longgar untuk produk
-const productLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 menit
-    max: 10000, // Maksimal 10000 permintaan per IP dalam 15 menit
-    message: {
-        status: 429,
-        message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// **3. Throttle user**
+// **3. Pembatasan user**
 const userThrottle = throttle(100); // Batasan lebih longgar untuk produk
 const userLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
@@ -85,6 +131,32 @@ app.use(['/api/orders', '/api/payments'], ipThrottle);
 // Middleware khusus untuk rute produk
 //app.use('/api/products', productLimiter, productThrottle);
 app.use('/auth/user', userLimiter, userThrottle);
+
+// Handle auth routes
+app.use('/auth/login', proxy('http://user-service:3001', {
+    proxyReqPathResolver: (req) => '/auth/login',
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        proxyReqOpts.headers['Content-Type'] = 'application/json';
+        return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, req, res) => {
+        try {
+            const data = JSON.parse(proxyResData.toString('utf8'));
+            console.log('Login response:', data);
+            return JSON.stringify(data);
+        } catch (error) {
+            console.error('Error parsing login response:', error);
+            return proxyResData;
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('Auth proxy error:', err);
+        res.status(500).json({ 
+            message: 'Error processing authentication request',
+            error: err.message 
+        });
+    }
+}));
 
 // Rute utama untuk Gateway
 app.get('/', (req, res) => {
@@ -122,6 +194,23 @@ app.get('/simulasi', (req, res) => {
 
 app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+app.get('/inventaris', (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.redirect('/login');
+    }
+    
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            return res.redirect('/');
+        }
+        next();
+    } catch (error) {
+        return res.redirect('/login');
+    }
 });
 
 app.get('/inventaris', (req, res) => {
@@ -250,66 +339,94 @@ app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
     }
 }));
 
-// Then handle general order routes
+// Menangani rute pesanan umum
 app.use('/api/orders', proxy('http://order-service:3003', {
-    proxyReqPathResolver: (req) => req.originalUrl.replace('/api/orders', '/orders'),
+    proxyReqPathResolver: (req) => {
+        console.log('Order request path:', req.path);
+        console.log('Original URL:', req.originalUrl);
+        console.log('Method:', req.method);
+        
+        // Handle cart orders
+        if (req.path === '/cart') {
+            console.log('Handling cart order');
+            return '/orders/create';
+        }
+        
+        // Handle GET request for fetching user orders
+        if (req.method === 'GET' && req.path === '/') {
+            return '/orders/user';
+        }
+        
+        // Handle status updates
+        if (req.path.includes('/status')) {
+            const orderId = req.path.split('/')[1];
+            return `/orders/${orderId}/status`;
+        }
+        
+        // Handle POST request for creating new order
+        if (req.method === 'POST' && req.path === '/') {
+            return '/orders/create';
+        }
+        
+        return req.originalUrl.replace('/api/orders', '/orders');
+    },
     changeOrigin: true,
     secure: false,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOptDecorator: async (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id'];
+        const userEmail = srcReq.headers['user-email'];
+        
         if (!userId) {
-            throw new Error('Missing user-id header');
+            throw new Error('Header user-id tidak ditemukan');
         }
+        
+        // Require email for all order operations
+        if (!userEmail) {
+            throw new Error('Header user-email tidak ditemukan');
+        }
+        
         proxyReqOpts.headers['user-id'] = userId;
+        proxyReqOpts.headers['user-email'] = userEmail;
+        proxyReqOpts.headers['Content-Type'] = 'application/json';
+        
+        console.log('Final request headers:', proxyReqOpts.headers);
+        console.log('Final request path:', proxyReqOpts.path);
         return proxyReqOpts;
+    },
+    onError: (err, req, res) => {
+        console.error('Proxy error:', err);
+        res.status(500).json({ message: err.message || 'Error proxying request' });
     }
 }));
 
 app.use('/api/payments', proxy('http://payment-service:3004', {
     secure: false,
     changeOrigin: true,
-    proxyReqPathResolver: (req) => req.originalUrl,
+    proxyReqPathResolver: (req) => {
+        // Keep the original path
+        return req.originalUrl;
+    },
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id'];
+        const userEmail = srcReq.headers['user-email'];
         if (!userId) {
             throw new Error('Missing user-id header. User must be authenticated.');
         }
-        proxyReqOpts.headers['user-id'] = userId;
-        return proxyReqOpts;
-    },
-}));
-
-app.use('/api/orders/cart', proxy('http://order-service:3003', {
-    proxyReqPathResolver: (req) => req.originalUrl,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];
-        if (userId) {
-            proxyReqOpts.headers['user-id'] = userId;
-        }
-        return proxyReqOpts;
-    },
-}));
-
-// Handle all order-related routes
-app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
-    proxyReqPathResolver: (req) => {
-        console.log('Proxying status update to:', `/orders/${req.params.orderId}/status`);
-        return `/orders/${req.params.orderId}/status`;
-    },
-    changeOrigin: true,
-    secure: false,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];
-        if (!userId) {
-            throw new Error('Missing user-id header');
+        if (!userEmail) {
+            throw new Error('Missing user-email header. User must be authenticated.');
         }
         proxyReqOpts.headers['user-id'] = userId;
+        proxyReqOpts.headers['user-email'] = userEmail;
         proxyReqOpts.headers['Content-Type'] = 'application/json';
+        
+        // Log the request details
+        console.log('Payment request headers:', proxyReqOpts.headers);
+        console.log('Payment request body:', srcReq.body);
         return proxyReqOpts;
     },
     onError: (err, req, res) => {
-        console.error('Proxy error:', err);
-        res.status(500).json({ message: 'Error proxying request' });
+        console.error('Payment proxy error:', err);
+        res.status(500).json({ message: err.message || 'Error processing payment request' });
     }
 }));
 
@@ -326,6 +443,10 @@ app.use('/api/admin/orders', proxy('http://order-service:3003', {
         console.log('user-id: ', userId);
         if (userId) {
             proxyReqOpts.headers['user-id'] = userId;
+            // Meneruskan token JWT
+            if (srcReq.headers.authorization) {
+                proxyReqOpts.headers['authorization'] = srcReq.headers.authorization;
+            }
         }
         return proxyReqOpts;
     },
@@ -340,12 +461,27 @@ app.use('/api/inventory', proxy('http://product-service:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id'];
+        const token = srcReq.headers.authorization;
+        
         if (!userId) {
             throw new Error('Missing user-id header. User must be authenticated.');
         }
+        
+        if (!token) {
+            throw new Error('Missing authorization token');
+        }
+        
         proxyReqOpts.headers['user-id'] = userId;
+        proxyReqOpts.headers['authorization'] = token;
         return proxyReqOpts;
     },
+    onError: (err, req, res) => {
+        console.error('Inventory proxy error:', err);
+        res.status(500).json({ 
+            message: err.message || 'Error proxying inventory request',
+            error: err.toString()
+        });
+    }
 }));
 
 // Create HTTPS server

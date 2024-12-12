@@ -978,8 +978,11 @@
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
                     localStorage.setItem('userId', data.user.id);
                     localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userRole', data.user.role);
                     if (data.user.role === 'admin') {
-                        document.getElementById('inventaris-link').style.display = 'inline-block';
+                        document.getElementById('inventaris-link').style.display = 'block';
+                    } else {
+                        document.getElementById('inventaris-link').style.display = 'none';
                     }
                     loginBtn.style.display = 'none';
                     logoutBtn.style.display = 'block';
@@ -991,6 +994,7 @@
                     orderBtn.style.display = 'block';
                     localStorage.removeItem('userId');
                     localStorage.removeItem('userEmail');
+                    localStorage.removeItem('userRole');
                     document.getElementById('inventaris-link').style.display = 'none';
                 }
     

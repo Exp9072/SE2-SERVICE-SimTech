@@ -87,71 +87,67 @@ module.exports = { connectRabbitMQ, getRabbitChannel };
 // Hubungkan RabbitMQ
 connectRabbitMQ();
 // Endpoint untuk melakukan pembayaran
-app.post('/api/payments', async (req, res) => {
-    const { orderId, paymentMethod} = req.body;
+app.post('/api/payments', authenticateUser, async (req, res) => {
+    console.log('Received payment request body:', req.body);
+    const order_id = req.body.orderId;
+    const payment_method = req.body.paymentMethod;
     const userEmail = req.headers['user-email'];
-    console.log("Order Id :", orderId);
-    console.log("Payment Method :", paymentMethod);
-    console.log("User Email :", userEmail);
     
+    console.log('Order Id :', order_id);
+    console.log('Payment Method :', payment_method);
+    console.log('User Email :', userEmail);
 
-    if (!orderId || !paymentMethod) {
-        return res.status(400).json({ message: 'Order ID dan metode pembayaran diperlukan.' });
+    if (!order_id || !payment_method) {
+        return res.status(400).json({ 
+            message: 'Order ID dan metode pembayaran diperlukan',
+            received: req.body,
+            expected: {
+                orderId: "number",
+                paymentMethod: "string"
+            }
+        });
     }
 
     try {
+        // Check if order exists and is unpaid
         const [order] = await db.query(
-            'SELECT * FROM orders WHERE order_id = ? AND email = ? AND payment = "unpaid"',
-            [orderId, req.headers['user-email']]
+            'SELECT order_id, total_price FROM orders WHERE order_id = ? AND payment = ?',
+            [order_id, 'unpaid']
         );
 
         if (order.length === 0) {
-            return res.status(404).json({ message: 'Pesanan tidak ditemukan atau sudah dibayar.' });
+            return res.status(404).json({ 
+                message: 'Pesanan tidak ditemukan atau sudah dibayar' 
+            });
         }
 
-        // Tambahkan logika untuk memeriksa apakah pesan sudah dikirim sebelumnya
-        const [existingPayment] = await db.query(
-            'SELECT * FROM payments WHERE order_id = ?',
-            [orderId]
+        // Create payment record
+        const [result] = await db.query(
+            'INSERT INTO payments (order_id, payment_method, payment_date, email, amount) VALUES (?, ?, NOW(), ?, ?)',
+            [order_id, payment_method, userEmail, order[0].total_price]
         );
 
-        if (existingPayment.length > 0) {
-            return res.status(400).json({ message: 'Pembayaran untuk pesanan ini sudah diproses.' });
-        }
-
+        // Update order payment status
         await db.query(
-            'UPDATE orders SET payment = ?, status = ? WHERE order_id = ?',
-            ['paid', 'sedang dikirim', orderId]
+            'UPDATE orders SET payment = ? WHERE order_id = ?',
+            ['paid', order_id]
         );
 
-        await db.query(
-            'INSERT INTO payments (order_id, email, payment_method, amount) VALUES (?, ?, ?, ?)',
-            [orderId, req.headers['user-email'], paymentMethod, order[0].total_price]
-        );
+        res.status(201).json({
+            message: 'Pembayaran berhasil',
+            payment_id: result.insertId
+        });
 
-        const paymentData = {
-            orderId,
-            paymentMethod,
-            amount: order[0].total_price,
-            paymentDate: new Date().toISOString(),
-        };
-
-        const channel = getRabbitChannel();
-        await channel.assertQueue('payment_queue');
-        channel.sendToQueue('payment_queue', Buffer.from(JSON.stringify(paymentData)));
-
-        console.log('Payment message sent to RabbitMQ:', paymentData);
-        res.status(200).json({ message: 'Pembayaran berhasil.', paymentData });
     } catch (error) {
         console.error('Error processing payment:', error);
-        res.status(500).json({ message: 'Terjadi kesalahan saat memproses pembayaran.' });
+        res.status(500).json({ message: 'Gagal memproses pembayaran' });
     }
 });
 
 
 app.get('/api/payments/:orderId', async (req, res) => {
     const { orderId } = req.params;
-    const userEmail = req.headers['user-email']; // Ambil email dari header
+    const userEmail = req.headers['user-email'];
 
     if (!userEmail) {
         console.error('Missing user-email in headers');
@@ -169,7 +165,13 @@ app.get('/api/payments/:orderId', async (req, res) => {
             return res.status(404).json({ message: 'Detail pembayaran tidak ditemukan.' });
         }
 
-        res.json(paymentDetails[0]);
+        // Format the response
+        const payment = {
+            ...paymentDetails[0],
+            amount: parseFloat(paymentDetails[0].amount)
+        };
+
+        res.json(payment);
     } catch (error) {
         console.error('Error fetching payment details:', error);
         res.status(500).json({ message: 'Terjadi kesalahan saat mengambil detail pembayaran.' });

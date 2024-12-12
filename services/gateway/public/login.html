@@ -236,31 +236,33 @@
             const password = document.getElementById('password').value;
     
             try {
-                console.log('Sending login request...'); // Debugging log
-                const response = await fetch('https://192.168.0.5:8443/login', {
+                console.log('Sending login request...');
+                const response = await fetch('/auth/login', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ email, password }),
+                    body: JSON.stringify({ email, password })
                 });
-    
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Login response:', data); // Debugging log
-                    alert('Login successful!');
-                    localStorage.setItem('userId', data.user.id); // Simpan userId ke localStorage
-                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
-                    console.log('User logged in: ', data.user); // Debugging log
-                    window.location.href = '/'; // Redirect to homepage
+                
+                const data = await response.json();
+                console.log('Login response:', data); // Debug log
+                
+                if (response.ok && data.success) {
+                    // Store user data in localStorage
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userRole', data.user.role);
+                    localStorage.setItem('token', data.token);
+                    
+                    // Redirect based on role
+                    window.location.href = '/';
                 } else {
-                    const errorData = await response.json();
-                    console.error('Login failed:', errorData); // Debugging log
-                    alert(`Login failed: ${errorData.message || 'Please check your credentials.'}`);
+                    alert(data.message || 'Login gagal');
                 }
             } catch (error) {
-                console.error('Login error:', error); // Debugging log
-                alert('An error occurred during login. Please try again.');
+                console.error('Login error:', error);
+                alert('Terjadi kesalahan saat login');
             }
         });
     </script>

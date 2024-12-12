@@ -310,6 +310,118 @@
             background-color: #f0f0f0;
             color: #666;
         }
+
+        .order-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .order-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .order-info {
+            margin: 10px 0;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .detail-btn,
+        .payment-detail-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .detail-btn:hover,
+        .payment-detail-btn:hover {
+            background: #0056b3;
+        }
+
+        .pay-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .pay-btn:hover {
+            background: #45a049;
+        }
+
+        .no-orders {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .shop-now-btn {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .order-item-detail {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+            margin-bottom: 10px;
+        }
+
+        .order-item-detail:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+
+        .item-quantity,
+        .item-price {
+            color: #666;
+            margin: 4px 0;
+        }
+
+        .item-subtotal {
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 8px;
+        }
+
+        .order-summary {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #eee;
+        }
+
+        .order-total {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .order-status {
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -366,8 +478,9 @@
             const paymentModalContent = document.getElementById('payment-detail-content');
             const closePaymentModalButton = paymentModal.querySelector('.close-btn');
             const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+            const userEmail = localStorage.getItem('userEmail');
 
-            if (!userId) {
+            if (!userId || !userEmail) {
                 alert('Silakan login terlebih dahulu.');
                 window.location.href = '/login';
                 return;
@@ -379,6 +492,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'user-id': userId, // Sertakan userId di header
+                        'user-email': userEmail
                     },
                 });
                 
@@ -393,29 +507,55 @@
                 const orders = await response.json();
                 console.log('Orders fetched:', orders);
 
-                if (response.ok && orders.length > 0) {
-                    ordersContainer.innerHTML = orders.map(order => `
-                        <div class="order-item">
-                            <strong>Nomor Pesanan: ${order.order_id}</strong>
-                            <p>Total Harga: Rp ${order.total_price.toLocaleString('id-ID')}</p>
-                            <p>Pembayaran: ${order.payment === 'unpaid' ? 'Belum Dibayar' : 'Sudah Dibayar'}</p>
-                            <p>Status: ${order.status}</p>
-                            <p>Tanggal: ${new Date(order.order_date).toLocaleString('id-ID')}</p>
-                            <button class="detail-btn" data-order-id="${order.order_id}">
-                                Detail Barang
-                            </button>
-                            ${order.payment === 'unpaid' ? `
-                                <button class="pay-btn" data-order-id="${order.order_id}">
-                                    Bayar / Cancle
-                                </button>` : `<p style="color: green;">Pesanan sudah dibayar.</p>`}
-                                <button class="payment-detail-btn" data-order-id="${order.order_id}">
-                                    Detail Pembayaran
-                                </button>
+                if (response.ok && orders.orders && orders.orders.length > 0) {
+                    ordersContainer.innerHTML = '';
+                    orders.orders.forEach(order => {
+                        const orderDiv = document.createElement('div');
+                        orderDiv.className = 'order-card';
+                        
+                        // Format the date
+                        const orderDate = new Date(order.order_date).toLocaleDateString('id-ID', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
 
-                        </div>
-                    `).join('');
+                        orderDiv.innerHTML = `
+                            <div class="order-header">
+                                <h3>Order #${order.order_id}</h3>
+                                <p>Tanggal: ${orderDate}</p>
+                            </div>
+                            <div class="order-info">
+                                <p>Total: Rp ${parseInt(order.total_price).toLocaleString()}</p>
+                                <p>Status: ${order.status}</p>
+                                <p>Pembayaran: ${order.payment}</p>
+                            </div>
+                            <div class="order-actions">
+                                <button class="detail-btn" data-order-id="${order.order_id}">
+                                    Detail Barang
+                                </button>
+                              ${order.payment === 'unpaid' ? 
+                                 `<button class="pay-btn" data-order-id="${order.order_id}">
+                                     Bayar Sekarang
+                                 </button>`
+                                 : `
+                                     <button class="payment-detail-btn" data-order-id="${order.order_id}">
+                                         Detail Pembayaran
+                                     </button>
+                                 `}
+                            </div>
+                        `;
+                        ordersContainer.appendChild(orderDiv);
+                    });
                 } else {
-                    ordersContainer.innerHTML = '<p>Belum ada pesanan.</p>';
+                    ordersContainer.innerHTML = `
+                        <div class="no-orders">
+                            <p>Tidak ada pesanan yang ditemukan.</p>
+                            <a href="/katalog" class="shop-now-btn">Mulai Belanja</a>
+                        </div>
+                    `;
                 }
             } catch (error) {
                 console.error('Error fetching orders:', error);
@@ -433,14 +573,24 @@
                             headers: {
                                 'Content-Type': 'application/json',
                                 'user-id': userId,
+                                'user-email': userEmail
                             },
                         });
 
-                        const items = await response.json();
-                        if (response.ok && items.length > 0) {
-                            modalContent.innerHTML = items.map(item => `
-                                <p><strong>${item.name}</strong>: ${item.quantity} x Rp ${item.price.toLocaleString('id-ID')}</p>
-                            `).join('');
+                        const data = await response.json();
+                        if (response.ok && data.items && data.items.length > 0) {
+                            modalContent.innerHTML = data.items.map(item => `
+                                <div class="order-item-detail">
+                                    <p class="item-name">${item.name}</p>
+                                    <p class="item-quantity">Jumlah: ${item.quantity}</p>
+                                    <p class="item-price">Harga Satuan: Rp ${item.unit_price.toLocaleString('id-ID')}</p>
+                                    <p class="item-subtotal">Subtotal: Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</p>
+                                </div>
+                            `).join('') + `
+                            <div class="order-summary">
+                                <p class="order-total">Total Order: Rp ${parseFloat(data.order_total).toLocaleString('id-ID')}</p>
+                                <p class="order-status">Status: ${data.items[0].order_status}</p>
+                            </div>`;
                             modal.classList.add('active');
                         } else {
                             modalContent.innerHTML = '<p>Detail barang tidak ditemukan.</p>';
@@ -448,7 +598,8 @@
                         }
                     } catch (error) {
                         console.error('Error fetching order items:', error);
-                        alert('Gagal memuat detail barang.');
+                        modalContent.innerHTML = '<p>Gagal memuat detail barang.</p>';
+                        modal.classList.add('active');
                     }
                 }
 

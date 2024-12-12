@@ -738,7 +738,9 @@
             logoutBtn.addEventListener('click', async () => {
                 await fetch('/logout', { method: 'POST' });
                 localStorage.removeItem('userId');
-                window.location.href = '/login';
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('token');
+                window.location.href = '/';
             });
 
             document.getElementById('add-product-btn').addEventListener('click', () => {
@@ -859,7 +861,12 @@
                     const statusFilter = document.getElementById('order-status-filter').value;
                     const paymentFilter = document.getElementById('payment-filter').value;
                     
-                    console.log('Status filter value:', statusFilter);
+                    // Get JWT token from localStorage
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.location.href = '/login';
+                        return;
+                    }
                     
                     // Build query string
                     const queryParams = new URLSearchParams();
@@ -879,9 +886,17 @@
 
                     const response = await fetch(url, {
                         headers: {
-                            'user-id': userId
+                            'user-id': userId,
+                            'Authorization': `Bearer ${token}`
                         }
                     });
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        // Token is invalid or expired
+                        localStorage.removeItem('token');
+                        window.location.href = '/login';
+                        return;
+                    }
                     
                     if (!response.ok) throw new Error('Failed to load orders');
                     const orders = await response.json();

@@ -7,6 +7,7 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 const fetch = require('node-fetch'); // Tambahkan untuk customFetch
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
@@ -173,36 +174,41 @@ async function customFetch(url, options = {}) {
 
 // Endpoint to get authenticated user
 app.get('/auth/user', (req, res) => {
-    console.log('Authenticated User:', req.user);
-    console.log('Session User:', req.session.user);
-    console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE);
+    console.log('Auth check - Session:', req.session);
+    console.log('Auth check - User:', req.user);
+    
+    // First check JWT token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            return res.json({
+                success: true,
+                user: decoded
+            });
+        } catch (error) {
+            console.error('JWT verification failed:', error);
+        }
+    }
 
+    // Fallback to session check
+    if (req.session.user) {
+        return res.json({
+            success: true,
+            user: req.session.user
+        });
+    }
+
+    // Check LOGIN_GOOGLE array
     if (LOGIN_GOOGLE.length > 0) {
         const latestUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
-        res.json({
+        return res.json({
             success: true,
-            user: {
-                id: latestUser.id,
-                name: latestUser.name || 'User',
-                email: latestUser.email,
-                profilePicture: latestUser.profilePicture || '/default-profile.png',
-                role: latestUser.role || 'user'
-            },
+            user: latestUser
         });
-    } else if (req.isAuthenticated() && req.user) {
-        res.json({
-            success: true,
-            user: {
-                id: req.user.id,
-                name: req.user.name || 'User',
-                email: req.user.email,
-                profilePicture: req.user.profile_picture || '/default-profile.png',
-                role: req.user.role || 'user'
-            },
-        });
-    } else {
-        res.json({ success: false, user: null });
     }
+
+    res.json({ success: false, user: null });
 });
 
 
@@ -404,6 +410,66 @@ app.post('/login', async (req, res, next) => {
     }
 });
 
+// Check for JWT_SECRET
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET is not set in environment variables');
+    process.exit(1);
+}
+
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        console.log('Login attempt for:', email); // Debug log
+
+        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        
+        if (users.length === 0) {
+            console.log('User not found:', email);
+            return res.status(401).json({ message: 'Email atau password salah' });
+        }
+        
+        const user = users[0];
+        if (password !== user.password) {
+            console.log('Invalid password for user:', email);
+            return res.status(401).json({ message: 'Email atau password salah' });
+        }
+        
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                email: user.email, 
+                role: user.role 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // Set session data
+        req.session.user = {
+            id: user.id,
+            email: user.email,
+            role: user.role
+        };
+        
+        console.log('Login successful for:', email, 'Role:', user.role);
+        
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                profilePicture: user.profile_picture
+            },
+            token: token
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat login' });
+    }
+});
 
 // Jalankan User Service
 app.listen(3001, () => console.log('User service running on port 3001'));

@@ -590,6 +590,246 @@ app.patch('/orders/:orderId/status', authenticateAdmin, async (req, res) => {
     }
 });
 
+// Create new order
+app.post('/orders/create', authenticateUser, async (req, res) => {
+    console.log('Received order creation request:', req.body);
+    const userEmail = req.headers['user-email'];
+    
+    console.log('Processing order for email:', userEmail);
+    console.log('Cart items received:', req.body.cart_items);
+    
+    if (!userEmail) {
+        return res.status(400).json({ message: 'Email pengguna tidak ditemukan' });
+    }
+    
+    const { cart_items } = req.body;
+    
+    if (!cart_items || !Array.isArray(cart_items) || cart_items.length === 0) {
+        console.log('Invalid cart items:', cart_items);
+        return res.status(400).json({ message: 'Keranjang belanja kosong' });
+    }
+    
+    try {
+        // Start transaction
+        await db.query('START TRANSACTION');
+        
+        console.log('Creating order for items:', cart_items);
+        
+        // Create order
+        const [orderResult] = await db.query(
+            'INSERT INTO orders (email, order_date, status, payment, total_price) VALUES (?, NOW(), ?, ?, 0)',
+            [userEmail, 'belum dikirim', 'unpaid']
+        );
+        
+        const orderId = orderResult.insertId;
+        let totalPrice = 0;
+        
+        // Process each item in cart
+        for (const item of cart_items) {
+            console.log('Processing item:', item);
+            
+            // Get item details and check stock
+            const [itemDetails] = await db.query(
+                'SELECT price, stock_quantity FROM items WHERE item_id = ?',
+                [item.product_id]
+            );
+            
+            console.log('Item details:', itemDetails);
+            
+            if (itemDetails.length === 0) {
+                await db.query('ROLLBACK');
+                return res.status(404).json({ 
+                    message: `Produk dengan ID ${item.product_id} tidak ditemukan` 
+                });
+            }
+            
+            if (itemDetails[0].stock_quantity < item.quantity) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ 
+                    message: `Stok tidak mencukupi untuk produk ID ${item.product_id}` 
+                });
+            }
+            
+            // Update stock
+            await db.query(
+                'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+                [item.quantity, item.product_id]
+            );
+            
+            // Add to order_items
+            await db.query(
+                'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
+                [orderId, item.product_id, item.quantity, itemDetails[0].price]
+            );
+            
+            totalPrice += itemDetails[0].price * item.quantity;
+        }
+        
+        // Update order total price
+        await db.query(
+            'UPDATE orders SET total_price = ? WHERE order_id = ?',
+            [totalPrice, orderId]
+        );
+        
+        // Commit transaction
+        await db.query('COMMIT');
+        
+        console.log('Order created successfully:', {
+            orderId,
+            totalPrice,
+            itemCount: cart_items.length
+        });
+        
+        res.status(201).json({
+            message: 'Pesanan berhasil dibuat',
+            order: {
+                order_id: orderId,
+                total_price: totalPrice,
+                status: 'belum dikirim',
+                payment: 'unpaid'
+            }
+        });
+        
+    } catch (error) {
+        await db.query('ROLLBACK');
+        console.error('Error creating order:', error);
+        res.status(500).json({ message: 'Terjadi kesalahan saat membuat pesanan' });
+    }
+});
+
+// Get user orders
+app.get('/orders/user', authenticateUser, async (req, res) => {
+    const userId = req.headers['user-id'];
+    const userEmail = req.headers['user-email'];
+    
+    console.log('Fetching orders for:', {
+        userId,
+        userEmail
+    });
+    
+    // Validate email
+    if (!userEmail) {
+        return res.status(400).json({ 
+            message: 'Email tidak ditemukan',
+            debug: { headers: req.headers }
+        });
+    }
+    
+    try {
+        // Debug: Check if email exists in orders
+        const [emailCheck] = await db.query(
+            'SELECT DISTINCT email FROM orders'
+        );
+        console.log('All emails in orders:', emailCheck);
+        
+        // Then get orders for that email
+        const query = 'SELECT * FROM orders WHERE email = ? ORDER BY order_date DESC';
+        console.log('Executing query:', query, 'with email:', userEmail);
+        
+        const [orders] = await db.query(
+            query,
+            [userEmail]
+        );
+        
+        console.log('Query result:', {
+            email: userEmail,
+            orderCount: orders.length,
+            orders: orders
+        });
+        
+        res.status(200).json({
+            message: 'Data pesanan berhasil diambil',
+            orders
+        });
+    } catch (error) {
+        console.error('Error fetching user orders:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data pesanan' });
+    }
+});
+
+// Debug endpoint to check orders BISA DI IGNORE
+app.get('/debug/orders', async (req, res) => {
+    try {
+        // Get all orders
+        const [orders] = await db.query('SELECT * FROM orders');
+        console.log('All orders in database:', orders);
+    
+        // Get all order items
+        const [orderItems] = await db.query('SELECT * FROM order_items');
+        console.log('All order items:', orderItems);
+    
+        res.json({
+            message: 'Debug info',
+            orderCount: orders.length,
+            orders: orders,
+            orderItemsCount: orderItems.length,
+            orderItems: orderItems
+        });
+    } catch (error) {
+        console.error('Debug error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get order items
+app.get('/orders/:orderId/items', authenticateUser, async (req, res) => {
+    const { orderId } = req.params;
+    const userEmail = req.headers['user-email'];
+    
+    try {
+        // First verify this order belongs to the user
+        const [order] = await db.query(
+            'SELECT * FROM orders WHERE order_id = ? AND email = ?',
+            [orderId, userEmail]
+        );
+ 
+        if (order.length === 0) {
+            return res.status(404).json({ 
+                message: 'Pesanan tidak ditemukan atau bukan milik Anda' 
+            });
+        }
+ 
+        // Get order items with product details
+        const [items] = await db.query(`
+            SELECT oi.*, i.item_name as name, i.item_id, i.price as unit_price,
+                   o.total_price as order_total, o.status as order_status
+            FROM order_items oi 
+            JOIN items i ON oi.product_id = i.item_id 
+            JOIN orders o ON oi.order_id = o.order_id
+            WHERE oi.order_id = ?`,
+            [orderId]
+        );
+ 
+        // Format the response
+        const formattedItems = items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: parseFloat(item.price),
+            unit_price: parseFloat(item.unit_price),
+            subtotal: parseFloat(item.price) * item.quantity,
+            product_id: item.product_id,
+            order_status: item.order_status,
+            order_total: parseFloat(item.order_total)
+        }));
+ 
+        res.status(200).json({
+            message: 'Detail pesanan berhasil diambil',
+            items: formattedItems,
+            order_total: items[0]?.order_total || 0
+        });
+ 
+    } catch (error) {
+        console.error('Error fetching order items:', error);
+        res.status(500).json({ 
+            message: 'Terjadi kesalahan saat mengambil detail pesanan' 
+        });
+    }
+});
+
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
 app.listen(PORT, '0.0.0.0', () => console.log(`Order service running on port ${PORT}`));

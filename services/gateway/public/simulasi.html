@@ -577,10 +577,11 @@
             });
     
             const handleBuyClick = debounce(async () => {
-                const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
-                if (!userId) {
+                const userId = localStorage.getItem('userId');
+                const userEmail = localStorage.getItem('userEmail');
+    
+                if (!userId || !userEmail) {
                     openModal('Login Diperlukan', 'Silakan login terlebih dahulu.');
-                    //window.location.href = '/login';
                     return;
                 }
     
@@ -596,10 +597,11 @@
                 };
     
                 const cartItems = Object.values(config).filter(Boolean).map(item => ({
-                    id: item.item_id,
-                    name: item.item_name,
-                    price: item.price,
+                    product_id: item.item_id,
+                    quantity: 1
                 }));
+    
+                console.log('Sending cart items:', cartItems);
     
                 try {
                     const response = await fetch('/api/orders/cart', {
@@ -607,24 +609,31 @@
                         headers: {
                             'Content-Type': 'application/json',
                             'user-id': userId,
+                            'user-email': userEmail
                         },
-                        body: JSON.stringify({ items: cartItems }),
+                        body: JSON.stringify({ cart_items: cartItems }),
                     });
     
                     if (response.ok) {
-                        const result = await response.json();
-                        openModal(
-                            'Keranjang Diperbarui',
-                            `Total harga: Rp ${new Intl.NumberFormat('id-ID').format(result.totalPrice)}`
-                        );
+                        const data = await response.json();
+                        console.log('Order created:', data);
+                        
+                        // Clear the form
+                        [cpuSelect, motherboardSelect, ramSelect, gpuSelect, 
+                         psuSelect, coolingSelect, storageSelect, casingSelect]
+                            .forEach(select => select.value = '');
+                        
+                        buyButton.style.display = 'none';
+                        
+                        alert('Pesanan berhasil dibuat!');
+                        window.location.href = `/payment?order_id=${data.order.order_id}`;
                     } else {
                         const errorData = await response.json();
-                        console.error(errorData);
-                        openModal('Kesalahan', 'Gagal memperbarui orders.');
+                        throw new Error(errorData.message || 'Gagal membuat pesanan');
                     }
                 } catch (error) {
                     console.error('Error handling orders:', error);
-                    openModal('Kesalahan', 'Terjadi kesalahan. Coba lagi nanti.');
+                    alert('Terjadi kesalahan: ' + error.message);
                 }
             }, 300);
     
