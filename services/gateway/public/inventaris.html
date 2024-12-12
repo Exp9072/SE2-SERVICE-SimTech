@@ -1,4 +1,3 @@
-@ -1,1068 +1,1083 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -594,519 +593,489 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check for token
-            const token = localStorage.getItem('token');
-            const userRole = localStorage.getItem('userRole');
-            
-            if (!token || userRole !== 'admin') {
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                alert('Please login first');
                 window.location.href = '/login';
                 return;
             }
 
-            // Verify token and admin status with server
-            try {
-                const authResponse = await fetch('/auth/user', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+            // Load inventory function
+            const loadInventory = async () => {
+                try {
+                    // Get filter values
+                    const typeFilter = document.getElementById('type-filter').value;
+                    const stockFilter = document.getElementById('stock-filter').value;
+                    
+                    const response = await fetch('/api/inventory', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    const data = await response.json();
 
-                const authData = await authResponse.json();
+                    // Apply filters
+                    let filteredData = data;
+                    
+                    // Filter by type
+                    if (typeFilter && typeFilter !== 'all') {
+                        filteredData = filteredData.filter(item => item.item_type === typeFilter);
+                    }
+                    
+                    // Filter by stock level
+                    if (stockFilter === 'low') {
+                        filteredData = filteredData.filter(item => item.stock_quantity < 5);
+                    } else if (stockFilter === 'out') {
+                        filteredData = filteredData.filter(item => item.stock_quantity === 0);
+                    }
+
+                    const tbody = document.getElementById('inventory-body');
+                    tbody.innerHTML = filteredData.map(item => `
+                        <tr>
+                            <td>${item.item_name}</td>
+                            <td>${item.item_type}</td>
+                            <td class="${item.stock_quantity < 5 ? 'low-stock' : ''}">${item.stock_quantity}</td>
+                            <td>Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</td>
+                            <td>
+                                <span class="status-badge ${item.stock_quantity < 5 ? 'status-low' : 'status-ok'}">
+                                    ${item.stock_quantity < 5 ? 'Low Stock' : 'In Stock'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="edit-btn" 
+                                    data-name="${item.item_name}" 
+                                    data-stock="${item.stock_quantity}" 
+                                    data-price="${item.price}">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    // Add event listeners to edit buttons
+                    addEditButtonListeners();
+                } catch (error) {
+                    console.error('Error loading inventory:', error);
+                }
+            };
+
+            // Function to add edit button listeners
+            const addEditButtonListeners = () => {
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const itemName = button.getAttribute('data-name');
+                        const currentStock = parseInt(button.getAttribute('data-stock'));
+                        const currentPrice = parseInt(button.getAttribute('data-price'));
+                        openEditModal(itemName, currentStock, currentPrice);
+                    });
+                });
+            };
+
+            // Add filter change event listeners
+            document.getElementById('type-filter').addEventListener('change', loadInventory);
+            document.getElementById('stock-filter').addEventListener('change', loadInventory);
+
+            // Initial load
+            loadInventory();
+
+            const loadStats = async () => {
+                try {
+                    const response = await fetch('/api/inventory/stats', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    if (!response.ok) throw new Error('Failed to load stats');
+                    
+                    const stats = await response.json();
+                    document.getElementById('total-products').textContent = stats.totalProducts;
+                    document.getElementById('low-stock').textContent = stats.lowStockCount;
+                    document.getElementById('total-value').textContent = 
+                        `Rp ${new Intl.NumberFormat('id-ID').format(stats.totalValue)}`;
+                } catch (error) {
+                    console.error('Error loading stats:', error);
+                }
+            };
+
+            const loadHistory = async () => {
+                try {
+                    const response = await fetch('/api/inventory/history', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    if (!response.ok) throw new Error('Failed to load history');
+                    
+                    const history = await response.json();
+                    const tbody = document.getElementById('history-body');
+                    tbody.innerHTML = history.map(item => `
+                        <tr>
+                            <td>${new Date(item.order_date).toLocaleDateString()}</td>
+                            <td>${item.item_name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.status}</td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading history:', error);
+                }
+            };
+
+            // Initialize
+            await loadStats();
+            await loadInventory();
+            await loadHistory();
+
+            // Profile menu
+            const profilePicture = document.getElementById('profile-picture');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            profilePicture.addEventListener('click', () => {
+                dropdownMenu.classList.toggle('active');
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                await fetch('/logout', { method: 'POST' });
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('token');
+                window.location.href = '/';
+            });
+
+            document.getElementById('add-product-btn').addEventListener('click', () => {
+                document.getElementById('add-product-modal').classList.add('active');
+            });
+
+            document.getElementById('cancel-add-btn').addEventListener('click', closeAddModal);
+
+            document.querySelector('select[name="item_type"]').addEventListener('change', (e) => {
+                const minWattGroup = document.getElementById('min-watt-group');
+                const minWattInput = document.querySelector('input[name="min_watt"]');
                 
-                if (!authResponse.ok || !authData.success || !authData.user || authData.user.role !== 'admin') {
-                    // Clear invalid auth data
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userRole');
-                    localStorage.removeItem('userEmail');
-                    window.location.href = '/login';
-                    return;
+                if (e.target.value === 'Graphics-Card') {
+                    minWattGroup.style.display = 'block';
+                    minWattInput.required = true;
+                } else {
+                    minWattGroup.style.display = 'none';
+                    minWattInput.required = false;
+                    minWattInput.value = '';
+                }
+            });
+
+            document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                if (data.item_type === 'Graphics-Card') {
+                    data.min_watt = parseInt(data.min_watt) || 0;
+                } else {
+                    data.min_watt = null;
                 }
 
-                // Load inventory function
-                const loadInventory = async () => {
-                    try {
-                        // Get filter values
-                        const typeFilter = document.getElementById('type-filter').value;
-                        const stockFilter = document.getElementById('stock-filter').value;
-                        
-                        const response = await fetch('/api/inventory', {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch inventory');
-                        }
-
-                        const data = await response.json();
-
-                        // Apply filters
-                        let filteredData = data;
-                        
-                        // Filter by type
-                        if (typeFilter && typeFilter !== 'all') {
-                            filteredData = filteredData.filter(item => item.item_type === typeFilter);
-                        }
-                        
-                        // Filter by stock level
-                        if (stockFilter === 'low') {
-                            filteredData = filteredData.filter(item => item.stock_quantity < 5);
-                        } else if (stockFilter === 'out') {
-                            filteredData = filteredData.filter(item => item.stock_quantity === 0);
-                        }
-
-                        const tbody = document.getElementById('inventory-body');
-                        tbody.innerHTML = filteredData.map(item => `
-                            <tr>
-                                <td>${item.item_name}</td>
-                                <td>${item.item_type}</td>
-                                <td class="${item.stock_quantity < 5 ? 'low-stock' : ''}">${item.stock_quantity}</td>
-                                <td>Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</td>
-                                <td>
-                                    <span class="status-badge ${item.stock_quantity < 5 ? 'status-low' : 'status-ok'}">
-                                        ${item.stock_quantity < 5 ? 'Low Stock' : 'In Stock'}
-                                    </span>
-                                </td>
-                                <td>
-                                    <button class="edit-btn" 
-                                        data-name="${item.item_name}" 
-                                        data-stock="${item.stock_quantity}" 
-                                        data-price="${item.price}">
-                                        Edit
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('');
-
-                        // Add event listeners to edit buttons
-                        addEditButtonListeners();
-                    } catch (error) {
-                        console.error('Error loading inventory:', error);
-                    }
-                };
-
-                // Function to add edit button listeners
-                const addEditButtonListeners = () => {
-                    document.querySelectorAll('.edit-btn').forEach(button => {
-                        button.addEventListener('click', () => {
-                            const itemName = button.getAttribute('data-name');
-                            const currentStock = parseInt(button.getAttribute('data-stock'));
-                            const currentPrice = parseInt(button.getAttribute('data-price'));
-                            openEditModal(itemName, currentStock, currentPrice);
-                        });
+                try {
+                    const response = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify(data)
                     });
-                };
 
-                // Add filter change event listeners
-                document.getElementById('type-filter').addEventListener('change', loadInventory);
-                document.getElementById('stock-filter').addEventListener('change', loadInventory);
-
-                // Initial load
-                loadInventory();
-
-                const loadStats = async () => {
-                    try {
-                        const response = await fetch('/api/inventory/stats', {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        if (!response.ok) throw new Error('Failed to load stats');
-                        
-                        const stats = await response.json();
-                        document.getElementById('total-products').textContent = stats.totalProducts;
-                        document.getElementById('low-stock').textContent = stats.lowStockCount;
-                        document.getElementById('total-value').textContent = 
-                            `Rp ${new Intl.NumberFormat('id-ID').format(stats.totalValue)}`;
-                    } catch (error) {
-                        console.error('Error loading stats:', error);
+                    if (response.ok) {
+                        alert('Product added successfully');
+                        closeAddModal();
+                        loadInventory();
+                    } else {
+                        alert('Failed to add product');
                     }
-                };
+                } catch (error) {
+                    console.error('Error adding product:', error);
+                    alert('Error adding product');
+                }
+            });
 
-                const loadHistory = async () => {
-                    try {
-                        const response = await fetch('/api/inventory/history', {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        if (!response.ok) throw new Error('Failed to load history');
-                        
-                        const history = await response.json();
-                        const tbody = document.getElementById('history-body');
-                        tbody.innerHTML = history.map(item => `
-                            <tr>
-                                <td>${new Date(item.order_date).toLocaleDateString()}</td>
-                                <td>${item.item_name}</td>
-                                <td>${item.quantity}</td>
-                                <td>${item.status}</td>
-                            </tr>
-                        `).join('');
-                    } catch (error) {
-                        console.error('Error loading history:', error);
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    // Update stock
+                    const stockResponse = await fetch('/api/products/stock', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify({
+                            item_name: data.item_name,
+                            stock: parseInt(data.stock)
+                        })
+                    });
+
+                    // Update price
+                    const priceResponse = await fetch('/api/products/price', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify({
+                            item_name: data.item_name,
+                            price: parseInt(data.price)
+                        })
+                    });
+
+                    if (stockResponse.ok && priceResponse.ok) {
+                        alert('Product updated successfully');
+                        closeEditModal();
+                        loadInventory();
+                    } else {
+                        alert('Failed to update product');
                     }
-                };
+                } catch (error) {
+                    console.error('Error updating product:', error);
+                    alert('Error updating product');
+                }
+            });
 
-                // Initialize
-                await loadStats();
-                await loadInventory();
-                await loadHistory();
-
-                // Profile menu
-                const profilePicture = document.getElementById('profile-picture');
-                const dropdownMenu = document.getElementById('dropdown-menu');
-                const logoutBtn = document.getElementById('logout-btn');
-
-                profilePicture.addEventListener('click', () => {
-                    dropdownMenu.classList.toggle('active');
+            // Tab switching functionality
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(`${button.dataset.tab}-tab`).classList.add('active');
+                    if (button.dataset.tab === 'orders') {
+                        loadOrders();
+                    }
                 });
+            });
 
-                logoutBtn.addEventListener('click', async () => {
-                    await fetch('/logout', { method: 'POST' });
-                    localStorage.removeItem('userId');
-                    window.location.href = '/login';
-                    localStorage.removeItem('userEmail');
-                    localStorage.removeItem('token');
-                    window.location.href = '/';
-                });
-
-                document.getElementById('add-product-btn').addEventListener('click', () => {
-                    document.getElementById('add-product-modal').classList.add('active');
-                });
-
-                document.getElementById('cancel-add-btn').addEventListener('click', closeAddModal);
-
-                document.querySelector('select[name="item_type"]').addEventListener('change', (e) => {
-                    const minWattGroup = document.getElementById('min-watt-group');
-                    const minWattInput = document.querySelector('input[name="min_watt"]');
+            // Load orders function
+            const loadOrders = async () => {
+                try {
+                    const statusFilter = document.getElementById('order-status-filter').value;
+                    const paymentFilter = document.getElementById('payment-filter').value;
                     
-                    if (e.target.value === 'Graphics-Card') {
-                        minWattGroup.style.display = 'block';
-                        minWattInput.required = true;
-                    } else {
-                        minWattGroup.style.display = 'none';
-                        minWattInput.required = false;
-                        minWattInput.value = '';
+                    // Get JWT token from localStorage
+                    const token = localStorage.getItem('token');
+                    if (!token) {
+                        window.location.href = '/login';
+                        return;
                     }
-                });
-
-                document.getElementById('add-product-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const data = Object.fromEntries(formData.entries());
-
-                    if (data.item_type === 'Graphics-Card') {
-                        data.min_watt = parseInt(data.min_watt) || 0;
-                    } else {
-                        data.min_watt = null;
+                    
+                    // Build query string
+                    const queryParams = new URLSearchParams();
+                    if (statusFilter && statusFilter !== 'all') {
+                        const dbStatus = statusFilter.toLowerCase();
+                        queryParams.append('status', dbStatus);
+                        console.log('Sending status filter:', dbStatus);
                     }
-
-                    try {
-                        const response = await fetch('/api/products', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify(data)
-                        });
-
-                        if (response.ok) {
-                            alert('Product added successfully');
-                            closeAddModal();
-                            loadInventory();
-                        } else {
-                            alert('Failed to add product');
-                        }
-                    } catch (error) {
-                        console.error('Error adding product:', error);
-                        alert('Error adding product');
+                    if (paymentFilter && paymentFilter !== 'all') {
+                        queryParams.append('payment', paymentFilter);
                     }
-                });
+                    
+                    const queryString = queryParams.toString();
+                    const url = `/api/admin/orders${queryString ? `?${queryString}` : ''}`;
+                    
+                    console.log('Fetching orders with URL:', url);
 
-                document.getElementById('edit-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.target);
-                    const data = Object.fromEntries(formData.entries());
-
-                    try {
-                        // Update stock
-                        const stockResponse = await fetch('/api/products/stock', {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify({
-                                item_name: data.item_name,
-                                stock: parseInt(data.stock)
-                            })
-                        });
-
-                        // Update price
-                        const priceResponse = await fetch('/api/products/price', {
-                            method: 'PATCH',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify({
-                                item_name: data.item_name,
-                                price: parseInt(data.price)
-                            })
-                        });
-
-                        if (stockResponse.ok && priceResponse.ok) {
-                            alert('Product updated successfully');
-                            closeEditModal();
-                            loadInventory();
-                        } else {
-                            alert('Failed to update product');
-                        }
-                    } catch (error) {
-                        console.error('Error updating product:', error);
-                        alert('Error updating product');
-                    }
-                });
-
-                // Tab switching functionality
-                document.querySelectorAll('.tab-btn').forEach(button => {
-                    button.addEventListener('click', () => {
-                        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-                        button.classList.add('active');
-                        document.getElementById(`${button.dataset.tab}-tab`).classList.add('active');
-                        if (button.dataset.tab === 'orders') {
-                            loadOrders();
+                    const response = await fetch(url, {
+                        headers: {
+                            'user-id': userId,
+                            'Authorization': `Bearer ${token}`
                         }
                     });
-                });
-
-                // Load orders function
-                const loadOrders = async () => {
-                    try {
-                        const statusFilter = document.getElementById('order-status-filter').value;
-                        const paymentFilter = document.getElementById('payment-filter').value;
-                        
-                        console.log('Status filter value:', statusFilter);
-                        // Get JWT token from localStorage
-                        const token = localStorage.getItem('token');
-                        if (!token) {
-                            window.location.href = '/login';
-                            return;
-                        }
-                        
-                        // Build query string
-                        const queryParams = new URLSearchParams();
-                        if (statusFilter && statusFilter !== 'all') {
-                            const dbStatus = statusFilter.toLowerCase();
-                            queryParams.append('status', dbStatus);
-                            console.log('Sending status filter:', dbStatus);
-                        }
-                        if (paymentFilter && paymentFilter !== 'all') {
-                            queryParams.append('payment', paymentFilter);
-                        }
-                        
-                        const queryString = queryParams.toString();
-                        const url = `/api/admin/orders${queryString ? `?${queryString}` : ''}`;
-                        
-                        console.log('Fetching orders with URL:', url);
-
-                        const response = await fetch(url, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        
-                        if (response.status === 401 || response.status === 403) {
-                            // Token is invalid or expired
-                            localStorage.removeItem('token');
-                            window.location.href = '/login';
-                            return;
-                        }
-                        
-                        if (!response.ok) throw new Error('Failed to load orders');
-                        const orders = await response.json();
-                        console.log('Debug info:', {
-                            filterApplied: statusFilter,
-                            totalOrders: orders.orders.length,
-                            sampleStatuses: orders.orders.slice(0, 3).map(o => o.status)
-                        });
-                        
-                        const tbody = document.getElementById('orders-body');
-                        tbody.innerHTML = '';
-                        
-                        if (!orders.orders || orders.orders.length === 0) {
-                            tbody.innerHTML = `
-                                <tr>
-                                    <td colspan="7" style="text-align: center;">No orders found</td>
-                                </tr>
-                            `;
-                            return;
-                        }
-                        
-                        tbody.innerHTML = orders.orders.map(order => `
-                            <tr>
-                                <td>${order.order_id}</td>
-                                <td>${order.email}</td>
-                                <td>${new Date(order.order_date).toLocaleDateString()}</td>
-                                <td>Rp ${new Intl.NumberFormat('id-ID').format(order.total_price)}</td>
-                                <td>
-                                    <span class="status-badge ${getPaymentStatusClass(order.payment)}">
-                                        ${order.payment}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="status-badge ${
-                                        order.status === 'Sudah Dikirim' ? 'delivered' : 
-                                        order.status === 'Sedang Dikirim' ? 'shipping' :
-                                        order.status === 'Belum Dikirim' ? 'pending' : ''
-                                    }">${order.status}</span>
-                                    ${order.payment === 'paid' && order.status === 'Sedang Dikirim' ? 
-                                        `<button class="edit-status-btn" data-order-id="${order.order_id}">
-                                            Update to Sudah Dikirim
-                                        </button>` : ''
-                                    }
-                                </td>
-                                <td>
-                                    ${getOrderActions(order)}
-                                </td>
-                            </tr>
-                        `).join('');
-
-                        // Add event listeners to edit status buttons
-                        document.querySelectorAll('.edit-status-btn').forEach(button => {
-                            button.addEventListener('click', async (e) => {
-                                const orderId = e.target.dataset.orderId;
-                                const newStatus = 'sudah dikirim';
-                                
-                                try {
-                                    const response = await fetch(`/api/orders/${orderId}/status`, {
-                                        method: 'PATCH',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Authorization': `Bearer ${token}`
-                                        },
-                                        body: JSON.stringify({ status: newStatus })
-                                    });
-
-                                    if (response.ok) {
-                                        alert('Order status updated successfully');
-                                        // Update the display
-                                        const td = button.parentElement;
-                                        td.innerHTML = `<span class="status-badge delivered">${newStatus}</span>`;
-                                        // Reload orders to refresh the view with current filters
-                                        loadOrders();
-                                    } else {
-                                        alert('Failed to update order status');
-                                        loadOrders();
-                                    }
-                                } catch (error) {
-                                    console.error('Error updating order status:', error);
-                                    alert('Error updating order status');
-                                    loadOrders();
-                                }
-                            });
-                        });
-
-                        addOrderActionListeners();
-                    } catch (error) {
-                        console.error('Error loading orders:', error);
-                        const tbody = document.getElementById('orders-body');
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        // Token is invalid or expired
+                        localStorage.removeItem('token');
+                        window.location.href = '/login';
+                        return;
+                    }
+                    
+                    if (!response.ok) throw new Error('Failed to load orders');
+                    const orders = await response.json();
+                    console.log('Debug info:', {
+                        filterApplied: statusFilter,
+                        totalOrders: orders.orders.length,
+                        sampleStatuses: orders.orders.slice(0, 3).map(o => o.status)
+                    });
+                    
+                    const tbody = document.getElementById('orders-body');
+                    tbody.innerHTML = '';
+                    
+                    if (!orders.orders || orders.orders.length === 0) {
                         tbody.innerHTML = `
                             <tr>
-                                <td colspan="7" style="text-align: center;">Error loading orders</td>
+                                <td colspan="7" style="text-align: center;">No orders found</td>
                             </tr>
                         `;
+                        return;
                     }
-                };
-
-                const getPaymentStatusClass = (payment) => {
-                    switch (payment) {
-                        case 'unpaid': return 'status-unpaid';
-                        case 'paid': return 'status-paid';
-                        default: return '';
-                    }
-                };
-
-                const getOrderActions = (order) => {
-                    if (order.payment === 'unpaid') {
-                        return `<button class="action-btn delete-btn" data-order-id="${order.order_id}">Delete</button>`;
-                    }
-                    return '';
-                };
-
-                const addOrderActionListeners = () => {
-                    // Delete unpaid orders
-                    document.querySelectorAll('.delete-btn').forEach(button => {
-                        button.addEventListener('click', async () => {
-                            if (confirm('Are you sure you want to delete this unpaid order?')) {
-                                try {
-                                    const response = await fetch(`/api/orders/${button.dataset.orderId}`, {
-                                        method: 'DELETE',
-                                        headers: {
-                                            'Authorization': `Bearer ${token}`
-                                        }
-                                    });
-
-                                    if (response.ok) {
-                                        alert('Order deleted successfully');
-                                        loadOrders();
-                                    } else {
-                                        alert('Failed to delete order');
-                                    }
-                                } catch (error) {
-                                    console.error('Error deleting order:', error);
-                                    alert('Error deleting order');
+                    
+                    tbody.innerHTML = orders.orders.map(order => `
+                        <tr>
+                            <td>${order.order_id}</td>
+                            <td>${order.email}</td>
+                            <td>${new Date(order.order_date).toLocaleDateString()}</td>
+                            <td>Rp ${new Intl.NumberFormat('id-ID').format(order.total_price)}</td>
+                            <td>
+                                <span class="status-badge ${getPaymentStatusClass(order.payment)}">
+                                    ${order.payment}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${
+                                    order.status === 'Sudah Dikirim' ? 'delivered' : 
+                                    order.status === 'Sedang Dikirim' ? 'shipping' :
+                                    order.status === 'Belum Dikirim' ? 'pending' : ''
+                                }">${order.status}</span>
+                                ${order.payment === 'paid' && order.status === 'Sedang Dikirim' ? 
+                                    `<button class="edit-status-btn" data-order-id="${order.order_id}">
+                                        Update to Sudah Dikirim
+                                    </button>` : ''
                                 }
-                            }
-                        });
-                    });
+                            </td>
+                            <td>
+                                ${getOrderActions(order)}
+                            </td>
+                        </tr>
+                    `).join('');
 
-                    // Mark orders as delivered
-                    document.querySelectorAll('.deliver-btn').forEach(button => {
-                        button.addEventListener('click', async () => {
+                    // Add event listeners to edit status buttons
+                    document.querySelectorAll('.edit-status-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const orderId = e.target.dataset.orderId;
+                            const newStatus = 'sudah dikirim';
+                            
                             try {
-                                const response = await fetch(`/api/orders/${button.dataset.orderId}/status`, {
+                                const response = await fetch(`/api/orders/${orderId}/status`, {
                                     method: 'PATCH',
                                     headers: {
                                         'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${token}`
+                                        'user-id': userId
                                     },
-                                    body: JSON.stringify({ status: 'sudah dikirim' })
+                                    body: JSON.stringify({ status: newStatus })
                                 });
 
                                 if (response.ok) {
-                                    alert('Order marked as delivered');
+                                    alert('Order status updated successfully');
+                                    // Update the display
+                                    const td = button.parentElement;
+                                    td.innerHTML = `<span class="status-badge delivered">${newStatus}</span>`;
+                                    // Reload orders to refresh the view with current filters
                                     loadOrders();
                                 } else {
                                     alert('Failed to update order status');
+                                    loadOrders();
                                 }
                             } catch (error) {
                                 console.error('Error updating order status:', error);
                                 alert('Error updating order status');
+                                loadOrders();
                             }
                         });
                     });
-                };
 
-                // Add event listeners for filters
-                document.getElementById('order-status-filter').addEventListener('change', () => {
-                    console.log('Status filter changed to:', document.getElementById('order-status-filter').value);
-                    loadOrders();
+                    addOrderActionListeners();
+                } catch (error) {
+                    console.error('Error loading orders:', error);
+                    const tbody = document.getElementById('orders-body');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center;">Error loading orders</td>
+                        </tr>
+                    `;
+                }
+            };
+
+            const getPaymentStatusClass = (payment) => {
+                switch (payment) {
+                    case 'unpaid': return 'status-unpaid';
+                    case 'paid': return 'status-paid';
+                    default: return '';
+                }
+            };
+
+            const getOrderActions = (order) => {
+                if (order.payment === 'unpaid') {
+                    return `<button class="action-btn delete-btn" data-order-id="${order.order_id}">Delete</button>`;
+                }
+                return '';
+            };
+
+            const addOrderActionListeners = () => {
+                // Delete unpaid orders
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to delete this unpaid order?')) {
+                            try {
+                                const response = await fetch(`/api/orders/${button.dataset.orderId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'user-id': userId
+                                    }
+                                });
+
+                                if (response.ok) {
+                                    alert('Order deleted successfully');
+                                    loadOrders();
+                                } else {
+                                    alert('Failed to delete order');
+                                }
+                            } catch (error) {
+                                console.error('Error deleting order:', error);
+                                alert('Error deleting order');
+                            }
+                        }
+                    });
                 });
 
-                document.getElementById('payment-filter').addEventListener('change', () => {
-                    console.log('Payment filter changed to:', document.getElementById('payment-filter').value);
-                    loadOrders();
-                });
+                // Mark orders as delivered
+                document.querySelectorAll('.deliver-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        try {
+                            const response = await fetch(`/api/orders/${button.dataset.orderId}/status`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'user-id': userId
+                                },
+                                body: JSON.stringify({ status: 'sudah dikirim' })
+                            });
 
-                // Initial load
+                            if (response.ok) {
+                                alert('Order marked as delivered');
+                                loadOrders();
+                            } else {
+                                alert('Failed to update order status');
+                            }
+                        } catch (error) {
+                            console.error('Error updating order status:', error);
+                            alert('Error updating order status');
+                        }
+                    });
+                });
+            };
+
+            // Add event listeners for filters
+            document.getElementById('order-status-filter').addEventListener('change', () => {
+                console.log('Status filter changed to:', document.getElementById('order-status-filter').value);
                 loadOrders();
-            } catch (error) {
-                console.error('Error loading inventory:', error);
-            }
+            });
+
+            document.getElementById('payment-filter').addEventListener('change', () => {
+                console.log('Payment filter changed to:', document.getElementById('payment-filter').value);
+                loadOrders();
+            });
+
+            // Initial load
+            loadOrders();
         });
     </script>
 </body>

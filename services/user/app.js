@@ -173,42 +173,73 @@ async function customFetch(url, options = {}) {
 }
 
 // Endpoint to get authenticated user
-app.get('/auth/user', (req, res) => {
-    console.log('Auth check - Session:', req.session);
-    console.log('Auth check - User:', req.user);
-    
-    // First check JWT token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+app.get('/auth/user', async (req, res) => {
+    try {
+        console.log('Auth check - Session:', req.session);
+        console.log('Auth check - User:', req.user);
+
+        // Check LOGIN_GOOGLE array first
+        if (LOGIN_GOOGLE.length > 0) {
+            const latestUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
+            // Update session if not set
+            if (!req.session.user) {
+                req.session.user = latestUser;
+            }
             return res.json({
                 success: true,
-                user: decoded
+                user: latestUser
             });
-        } catch (error) {
-            console.error('JWT verification failed:', error);
         }
-    }
 
-    // Fallback to session check
-    if (req.session.user) {
-        return res.json({
-            success: true,
-            user: req.session.user
+        // Check session
+        if (req.session.user) {
+            return res.json({
+                success: true,
+                user: req.session.user
+            });
+        }
+
+        // Check JWT token
+        const authHeader = req.headers.authorization;
+        const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+        
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                // Get full user data from database
+                const [users] = await db.query('SELECT * FROM users WHERE id = ?', [decoded.id]);
+                if (users.length > 0) {
+                    const user = users[0];
+                    const userData = {
+                        id: user.id,
+                        email: user.email,
+                        role: user.role,
+                        name: user.name,
+                        profilePicture: user.profile_picture
+                    };
+                    // Update session
+                    req.session.user = userData;
+                    return res.json({
+                        success: true,
+                        user: userData
+                    });
+                }
+            } catch (error) {
+                console.error('JWT verification failed:', error);
+            }
+        }
+
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Unauthorized' 
+        });
+    } catch (error) {
+        console.error('Auth check error:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error' 
         });
     }
-
-    // Check LOGIN_GOOGLE array
-    if (LOGIN_GOOGLE.length > 0) {
-        const latestUser = LOGIN_GOOGLE[LOGIN_GOOGLE.length - 1];
-        return res.json({
-            success: true,
-            user: latestUser
-        });
-    }
-
-    res.json({ success: false, user: null });
 });
 
 
@@ -219,21 +250,44 @@ app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'em
 app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/' }),
-    (req, res) => {
-        console.log('Google Authentication Successful:', req.user); // Debugging
-        console.log('Session after Google Login:', req.session); // Debugging sesi
-        // Simpan data user ke variabel LOGIN_GOOGLE
-        LOGIN_GOOGLE.push({
-            id: req.user.id,
-            name: req.user.name,
-            email: req.user.email,
-            profilePicture: req.user.profile_picture,
-            role: req.user.role
-        });
+    async (req, res) => {
+        try {
+            console.log('Google Authentication Successful:', req.user);
+            
+            const userData = {
+                id: req.user.id,
+                email: req.user.email,
+                name: req.user.name,
+                role: req.user.role,
+                profilePicture: req.user.profile_picture
+            };
 
-        console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE); // Debugging
-        const userData = encodeURIComponent(JSON.stringify(req.user));
-        res.redirect(`http://192.168.0.5:8080?user=${userData}`);
+            // Set session data
+            req.session.user = userData;
+
+            // Generate JWT token
+            const token = jwt.sign(
+                { 
+                    id: req.user.id, 
+                    email: req.user.email, 
+                    role: req.user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            // Save to LOGIN_GOOGLE array
+            LOGIN_GOOGLE.push(userData);
+
+            console.log('Session after Google Login:', req.session);
+            console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE);
+            
+            // Redirect with token
+            res.redirect(`http://192.168.0.5:8080?token=${token}`);
+        } catch (error) {
+            console.error('OAuth callback error:', error);
+            res.redirect('/');
+        }
     }
 );
 
@@ -252,48 +306,52 @@ app.get('/auth/github/callback',
         failureMessage: true,
         session: true
     }),
-    (req, res) => {
-        console.log('GitHub callback reached', {
-            user: req.user,
-            session: req.session,
-            isAuthenticated: req.isAuthenticated()
-        });
-        
-        if (!req.user) {
-            console.log('No user found in request');
-            return res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
-        }
-
-        // Store in LOGIN_GOOGLE array (we'll use this for both Google and GitHub)
-        LOGIN_GOOGLE.push({
-            id: req.user.id,
-            name: req.user.name,
-            email: req.user.email,
-            profilePicture: req.user.profile_picture,
-            role: req.user.role
-        });
-
-        // Store user data in session
-        req.session.user = {
-            id: req.user.id,
-            name: req.user.name,
-            email: req.user.email,
-            profile_picture: req.user.profile_picture,
-            role: req.user.role
-        };
-        
-        req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.redirect('https://9d17-139-194-77-206.ngrok-free.app/login?error=session_error');
-            }
-            console.log('Session saved with user:', req.session.user);
-            console.log('Session saved successfully, redirecting to homepage');
+    async (req, res) => {
+        try {
+            console.log('GitHub callback reached', {
+                user: req.user,
+                session: req.session,
+                isAuthenticated: req.isAuthenticated()
+            });
             
-            // Send user data in query params
-            const userData = encodeURIComponent(JSON.stringify(req.session.user));
-            res.redirect(`https://9d17-139-194-77-206.ngrok-free.app?user=${userData}`);
-        });
+            if (!req.user) {
+                console.log('No user found in request');
+                return res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
+            }
+
+            const userData = {
+                id: req.user.id,
+                name: req.user.name,
+                email: req.user.email,
+                profilePicture: req.user.profile_picture,
+                role: req.user.role
+            };
+
+            // Store in LOGIN_GOOGLE array (we'll use this for both Google and GitHub)
+            LOGIN_GOOGLE.push(userData);
+
+            // Store user data in session
+            req.session.user = userData;
+
+            // Generate JWT token
+            const token = jwt.sign(
+                { 
+                    id: req.user.id, 
+                    email: req.user.email, 
+                    role: req.user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            console.log('Session saved with user:', req.session.user);
+            
+            // Redirect with token
+            res.redirect(`http://192.168.0.5:8080?token=${token}`);
+        } catch (error) {
+            console.error('GitHub callback error:', error);
+            res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
+        }
     }
 );
 
@@ -366,8 +424,8 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Endpoint Login
-app.post('/login', async (req, res, next) => {
+// Endpoint Login with email/password
+app.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
@@ -383,57 +441,20 @@ app.post('/login', async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Simpan data ke sesi
-        req.session.user = {
+        const userData = {
             id: user.id,
             email: user.email,
             name: user.name,
+            role: user.role,
+            profilePicture: user.profile_picture
         };
 
-        // Gunakan req.login untuk mengatur req.user di Passport
-        req.login(req.session.user, (err) => {
-            if (err) {
-                console.error('Login error:', err);
-                return next(err);
-            }
+        // Store in LOGIN_GOOGLE array (we'll use this for all auth methods)
+        LOGIN_GOOGLE.push(userData);
 
-            console.log('Session data set and req.user initialized:', req.user); // Debugging
-            res.json({
-                success: true,
-                message: 'Login successful',
-                user: { id: user.id, email: user.email, name: user.name },
-            });
-        });
-    } catch (error) {
-        console.error('Login error:', error); // Debugging
-        res.status(500).json({ success: false, message: 'An error occurred during login' });
-    }
-});
+        // Store user data in session
+        req.session.user = userData;
 
-// Check for JWT_SECRET
-if (!process.env.JWT_SECRET) {
-    console.error('JWT_SECRET is not set in environment variables');
-    process.exit(1);
-}
-
-app.post('/auth/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        console.log('Login attempt for:', email);
-
-        const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
-        
-        if (users.length === 0) {
-            console.log('User not found:', email);
-            return res.status(401).json({ success: false, message: 'Email atau password salah' });
-        }
-        
-        const user = users[0];
-        if (password !== user.password) {
-            console.log('Invalid password for user:', email);
-            return res.status(401).json({ success: false, message: 'Email atau password salah' });
-        }
-        
         // Generate JWT token
         const token = jwt.sign(
             { 
@@ -444,25 +465,33 @@ app.post('/auth/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
-        
-        console.log('Login successful for:', email, 'Role:', user.role);
-        
-        res.json({
-            success: true,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                profilePicture: user.profile_picture
-            },
-            token: token
+
+        // Use req.login to set up Passport session
+        req.login(userData, (err) => {
+            if (err) {
+                console.error('Login error:', err);
+                return res.status(500).json({ success: false, message: 'Session initialization failed' });
+            }
+
+            console.log('Session data set and req.user initialized:', req.user);
+            res.json({
+                success: true,
+                message: 'Login successful',
+                user: userData,
+                token: token
+            });
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ message: 'Terjadi kesalahan saat login' });
+        res.status(500).json({ success: false, message: 'An error occurred during login' });
     }
 });
+
+// Check for JWT_SECRET
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET is not set in environment variables');
+    process.exit(1);
+}
 
 // Jalankan User Service
 app.listen(3001, () => console.log('User service running on port 3001'));

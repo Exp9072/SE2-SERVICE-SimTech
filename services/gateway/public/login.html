@@ -228,46 +228,42 @@
         <a href="/" class="back-btn">Back to Homepage</a>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Clear any existing auth data on login page load
-            localStorage.removeItem('token');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userEmail');
-
-            // Form Login with Email and Password
-            document.getElementById('login-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-        
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-        
-                try {
-                    console.log('Sending login request...');
-                    const response = await fetch('/auth/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
+        // Form Login with Email and Password
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+    
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+    
+            try {
+                console.log('Sending login request...');
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                console.log('Login response:', data); // Debug log
+                
+                if (response.ok && data.success) {
+                    // Store user data in localStorage
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('userEmail', data.user.email);
+                    localStorage.setItem('userRole', data.user.role);
+                    localStorage.setItem('token', data.token);
                     
-                    const data = await response.json();
-                    console.log('Login response:', data);
-                    
-                    if (data.success) {
-                        localStorage.setItem('userEmail', data.user.email);
-                        localStorage.setItem('userRole', data.user.role);
-                        localStorage.setItem('token', data.token);
-                        
-                        window.location.href = '/';
-                    } else {
-                        alert(data.message || 'Login gagal');
-                    }
-                } catch (error) {
-                    console.error('Login error:', error);
-                    alert('Terjadi kesalahan saat login');
+                    // Redirect based on role
+                    window.location.href = '/';
+                } else {
+                    alert(data.message || 'Login gagal');
                 }
-            });
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Terjadi kesalahan saat login');
+            }
         });
     </script>
 </body>

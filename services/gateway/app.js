@@ -138,6 +138,23 @@ app.use('/auth/login', proxy('http://user-service:3001', {
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         proxyReqOpts.headers['Content-Type'] = 'application/json';
         return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, req, res) => {
+        try {
+            const data = JSON.parse(proxyResData.toString('utf8'));
+            console.log('Login response:', data);
+            return JSON.stringify(data);
+        } catch (error) {
+            console.error('Error parsing login response:', error);
+            return proxyResData;
+        }
+    },
+    onError: (err, req, res) => {
+        console.error('Auth proxy error:', err);
+        res.status(500).json({ 
+            message: 'Error processing authentication request',
+            error: err.message 
+        });
     }
 }));
 
@@ -180,10 +197,7 @@ app.get('/register', (req, res) => {
 });
 
 app.get('/inventaris', (req, res, next) => {
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization || req.headers.Authorization;
-    const token = authHeader?.split(' ')[1];
-    
+    const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
         return res.redirect('/login');
     }
@@ -195,7 +209,6 @@ app.get('/inventaris', (req, res, next) => {
         }
         next();
     } catch (error) {
-        console.error('Token verification failed:', error);
         return res.redirect('/login');
     }
 });
@@ -219,8 +232,8 @@ app.use('/register', proxy('http://user-service:3001', {
 }));
 
 // Proxy untuk Google OAuth
-app.use('/auth/google', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://9d17-139-194-77-206.ngrok-free.app/auth/google',
+app.use('/auth/google', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/google',
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -231,8 +244,8 @@ app.use('/auth/google', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
     },
 }));
 
-app.use('/auth/google/callback', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://9d17-139-194-77-206.ngrok-free.app/auth/google/callback',
+app.use('/auth/google/callback', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/google/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -249,8 +262,8 @@ app.use('/auth/google/callback', proxy('https://9d17-139-194-77-206.ngrok-free.a
 }));
 
 // Proxy untuk GitHub OAuth
-app.use('/auth/github', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://9d17-139-194-77-206.ngrok-free.app/auth/github',
+app.use('/auth/github', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github',
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -261,8 +274,8 @@ app.use('/auth/github', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
     },
 }));
 
-app.use('/auth/github/callback', proxy('https://9d17-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://9d17-139-194-77-206.ngrok-free.app/auth/github/callback',
+app.use('/auth/github/callback', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -279,13 +292,15 @@ app.use('/auth/github/callback', proxy('https://9d17-139-194-77-206.ngrok-free.a
 
 app.use('/auth/user', proxy('http://user-service:3001', {
     proxyReqPathResolver: () => '/auth/user',
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        // Forward the Authorization header
-        if (srcReq.headers.authorization) {
-            proxyReqOpts.headers['authorization'] = srcReq.headers.authorization;
+    secure: false,
+    changeOrigin: true,
+    userResDecorator: (proxyRes, proxyResData, req, res) => {
+        const setCookie = proxyRes.headers['set-cookie'];
+        if (setCookie) {
+            res.setHeader('Set-Cookie', setCookie);
         }
-        return proxyReqOpts;
-    }
+        return proxyResData;
+    },
 }));
 
 app.use('/login', proxy('http://user-service:3001', {

@@ -969,43 +969,33 @@
             });
 
             try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('/auth/user', {
-                    headers: {
-                        'Authorization': token ? `Bearer ${token}` : ''
-                    }
-                });
+                // Periksa apakah pengguna telah login
+                const response = await fetch('/auth/user');
                 const data = await response.json();
     
                 if (data.success && data.user) {
                     isLoggedIn = true;
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
-                    localStorage.setItem('token', token);
+                    localStorage.setItem('userId', data.user.id);
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userRole', data.user.role);
-                    
-                    // Show/hide admin menu
-                    const inventarisLink = document.getElementById('inventaris-link');
                     if (data.user.role === 'admin') {
-                        inventarisLink.style.display = 'block';
+                        document.getElementById('inventaris-link').style.display = 'block';
                     } else {
-                        inventarisLink.style.display = 'none';
+                        document.getElementById('inventaris-link').style.display = 'none';
                     }
-                    
                     loginBtn.style.display = 'none';
                     logoutBtn.style.display = 'block';
                     orderBtn.style.display = 'block';
                 } else {
-                    // Not logged in or invalid token
                     profilePicture.src = 'images/default-profile.png';
-                    document.getElementById('inventaris-link').style.display = 'none';
                     loginBtn.style.display = 'block';
                     logoutBtn.style.display = 'none';
                     orderBtn.style.display = 'block';
-                    localStorage.removeItem('token');
+                    localStorage.removeItem('userId');
                     localStorage.removeItem('userEmail');
                     localStorage.removeItem('userRole');
-                    isLoggedIn = false;
+                    document.getElementById('inventaris-link').style.display = 'none';
                 }
     
                 profilePicture.addEventListener('click', (e) => {
