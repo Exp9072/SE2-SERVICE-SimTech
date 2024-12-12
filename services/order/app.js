@@ -457,31 +457,47 @@ app.delete('/api/orders/:orderId', authenticateAdmin, async (req, res) => {
 // Endpoint untuk mendapatkan semua pesanan, dengan opsi filter berdasarkan status pembayaran
 app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
     const { payment, status } = req.query;
+    console.log('Raw request query:', req.query);
+    console.log('Received filter request:', { 
+        payment, 
+        status, 
+        statusType: typeof status,
+        rawQuery: req.query 
+    });
     
     try {
         let query = 'SELECT * FROM orders';
         let queryParams = [];
-        
         let conditions = [];
-        if (status && status !== 'all') {
+    
+        if (status && status !== 'all' && status !== 'undefined') {
+            console.log('Applying status filter:', status);
             conditions.push('status = ?');
             queryParams.push(status);
         }
-        if (payment && payment !== 'all') {
+        if (payment && payment !== 'all' && payment !== 'undefined') {
             conditions.push('payment = ?');
             queryParams.push(payment);
         }
-        
+
         if (conditions.length > 0) {
             query += ' WHERE ' + conditions.join(' AND ');
         }
-        
+    
         query += ' ORDER BY order_date DESC';
-        console.log('Query:', query, 'Params:', queryParams); // Debug log
-        
+        console.log('Final query:', { 
+            query, 
+            params: queryParams,
+            conditions: conditions 
+        });
+    
         const [orders] = await db.query(query, queryParams);
-        console.log('Fetched orders:', orders); // Debug log
-        
+        console.log('Query results:', {
+            totalOrders: orders.length,
+            sampleStatus: orders[0]?.status,
+            filterStatus: status
+        });
+    
         res.status(200).json({
             message: 'Data pesanan berhasil diambil.',
             orders,

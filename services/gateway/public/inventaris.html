@@ -358,6 +358,14 @@
         .edit-status-btn:hover {
             background-color: #0056b3;
         }
+
+        .status-badge.pending {
+            background-color: #f0ad4e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -525,11 +533,18 @@
 
         <div id="orders-tab" class="tab-content">
             <div class="orders-filter">
+                <label for="order-status-filter">Filter by Status:</label>
                 <select id="order-status-filter">
                     <option value="all">All Orders</option>
                     <option value="Belum Dikirim">Belum Dikirim</option>
                     <option value="Sedang Dikirim">Sedang Dikirim</option>
                     <option value="Sudah Dikirim">Sudah Dikirim</option>
+                </select>
+                <label for="payment-filter">Filter by Payment:</label>
+                <select id="payment-filter">
+                    <option value="all">All Payments</option>
+                    <option value="paid">Paid</option>
+                    <option value="unpaid">Unpaid</option>
                 </select>
             </div>
             <div class="orders-table">
@@ -842,7 +857,27 @@
             const loadOrders = async () => {
                 try {
                     const statusFilter = document.getElementById('order-status-filter').value;
-                    const response = await fetch(`/api/admin/orders${statusFilter !== 'all' ? `?status=${encodeURIComponent(statusFilter)}` : ''}`, {
+                    const paymentFilter = document.getElementById('payment-filter').value;
+                    
+                    console.log('Status filter value:', statusFilter);
+                    
+                    // Build query string
+                    const queryParams = new URLSearchParams();
+                    if (statusFilter && statusFilter !== 'all') {
+                        const dbStatus = statusFilter.toLowerCase();
+                        queryParams.append('status', dbStatus);
+                        console.log('Sending status filter:', dbStatus);
+                    }
+                    if (paymentFilter && paymentFilter !== 'all') {
+                        queryParams.append('payment', paymentFilter);
+                    }
+                    
+                    const queryString = queryParams.toString();
+                    const url = `/api/admin/orders${queryString ? `?${queryString}` : ''}`;
+                    
+                    console.log('Fetching orders with URL:', url);
+
+                    const response = await fetch(url, {
                         headers: {
                             'user-id': userId
                         }
@@ -850,9 +885,24 @@
                     
                     if (!response.ok) throw new Error('Failed to load orders');
                     const orders = await response.json();
-                    console.log('Loaded orders:', orders);
+                    console.log('Debug info:', {
+                        filterApplied: statusFilter,
+                        totalOrders: orders.orders.length,
+                        sampleStatuses: orders.orders.slice(0, 3).map(o => o.status)
+                    });
                     
                     const tbody = document.getElementById('orders-body');
+                    tbody.innerHTML = '';
+                    
+                    if (!orders.orders || orders.orders.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="7" style="text-align: center;">No orders found</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
                     tbody.innerHTML = orders.orders.map(order => `
                         <tr>
                             <td>${order.order_id}</td>
@@ -866,12 +916,13 @@
                             </td>
                             <td>
                                 <span class="status-badge ${
-                                    order.status === 'sudah dikirim' ? 'delivered' : 
-                                    order.status === 'sedang dikirim' ? 'shipping' : ''
+                                    order.status === 'Sudah Dikirim' ? 'delivered' : 
+                                    order.status === 'Sedang Dikirim' ? 'shipping' :
+                                    order.status === 'Belum Dikirim' ? 'pending' : ''
                                 }">${order.status}</span>
-                                ${order.payment === 'paid' && order.status === 'sedang dikirim' ? 
+                                ${order.payment === 'paid' && order.status === 'Sedang Dikirim' ? 
                                     `<button class="edit-status-btn" data-order-id="${order.order_id}">
-                                        Update to Delivered
+                                        Update to Sudah Dikirim
                                     </button>` : ''
                                 }
                             </td>
@@ -902,6 +953,8 @@
                                     // Update the display
                                     const td = button.parentElement;
                                     td.innerHTML = `<span class="status-badge delivered">${newStatus}</span>`;
+                                    // Reload orders to refresh the view with current filters
+                                    loadOrders();
                                 } else {
                                     alert('Failed to update order status');
                                     loadOrders();
@@ -917,6 +970,12 @@
                     addOrderActionListeners();
                 } catch (error) {
                     console.error('Error loading orders:', error);
+                    const tbody = document.getElementById('orders-body');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center;">Error loading orders</td>
+                        </tr>
+                    `;
                 }
             };
 
@@ -989,8 +1048,19 @@
                 });
             };
 
-            // Add order filter change handler
-            document.getElementById('order-status-filter').addEventListener('change', loadOrders);
+            // Add event listeners for filters
+            document.getElementById('order-status-filter').addEventListener('change', () => {
+                console.log('Status filter changed to:', document.getElementById('order-status-filter').value);
+                loadOrders();
+            });
+
+            document.getElementById('payment-filter').addEventListener('change', () => {
+                console.log('Payment filter changed to:', document.getElementById('payment-filter').value);
+                loadOrders();
+            });
+
+            // Initial load
+            loadOrders();
         });
     </script>
 </body>

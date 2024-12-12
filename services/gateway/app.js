@@ -313,18 +313,19 @@ app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
     }
 }));
 
-// Middleware untuk meneruskan permintaan ke service pesanan (get all orders, dengan atau tanpa filter payment)
+// Middleware untuk meneruskan permintaan ke service pesanan
 app.use('/api/admin/orders', proxy('http://order-service:3003', {
-    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
+    changeOrigin: true,
     proxyReqPathResolver: (req) => {
-        const payment = req.query.payment;
-        return `/api/admin/orders${payment ? `?payment=${payment}` : ''}`;
+        // Forward all query parameters
+        const queryString = new URLSearchParams(req.query).toString();
+        return `/api/admin/orders${queryString ? `?${queryString}` : ''}`;
     },
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id']; // Mendapatkan user-id dari header
+        const userId = srcReq.headers['user-id'];
         console.log('user-id: ', userId);
         if (userId) {
-            proxyReqOpts.headers['user-id'] = userId; // Meneruskan user-id ke request proxy
+            proxyReqOpts.headers['user-id'] = userId;
         }
         return proxyReqOpts;
     },
