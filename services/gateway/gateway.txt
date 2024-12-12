@@ -1,0 +1,780 @@
+# Dokumentasi Gateway Service SimTech
+
+## 1. Pengenalan
+Gateway Service adalah komponen utama yang bertindak sebagai pintu masuk utama untuk semua permintaan ke sistem SimTech. Service ini menangani routing, autentikasi, dan pembatasan akses ke berbagai microservice. Gateway berperan sebagai reverse proxy yang meneruskan request ke service yang sesuai sambil menerapkan kebijakan keamanan dan pembatasan akses.
+
+### 1.1 Arsitektur
+- Menggunakan pola desain API Gateway
+- Menerapkan prinsip Single Entry Point
+
+### 1.2 Fungsi Utama
+1. Routing dan Proxy:
+   - Meneruskan request ke microservice yang sesuai
+   - Menangani transformasi request/response
+   - Menyembunyikan kompleksitas internal sistem
+
+2. Keamanan:
+   - Autentikasi terpusat
+   - Otorisasi berbasis role
+   - Perlindungan terhadap serangan
+
+3. Monitoring:
+   - Logging semua request
+   - Tracking performa
+   - Deteksi anomali
+
+## 2. Komponen Utama
+
+### 2.1 Dependensi
+1. express (^4.18.2):
+   - Framework web untuk Node.js
+   - Menangani routing dan middleware
+   - Mendukung Express middleware ecosystem
+
+2. morgan (^1.10.0):
+   - Logger untuk HTTP request
+   - Format logging yang dapat dikustomisasi
+   - Mendukung rotating file logs
+
+3. express-http-proxy (^1.6.3):
+   - Meneruskan request ke microservice
+   - Mendukung transformasi request/response
+   - Menangani streaming data
+
+4. rateLimit (^6.7.0):
+   - Pembatasan jumlah request
+   - Konfigurasi per rute
+   - Penyimpanan data rate limit di memory
+
+5. jsonwebtoken (^9.0.0):
+   - Implementasi JWT
+   - Verifikasi token
+   - Mendukung berbagai algoritma signing
+
+6. https:
+   - Modul bawaan Node.js
+   - Mengaktifkan HTTPS
+   - Mendukung SSL/TLS
+
+### 2.2 Konfigurasi Keamanan
+1. HTTPS:
+   - Menggunakan sertifikat SSL self-signed untuk development
+   - Port 8443 untuk HTTPS
+   - Redirect otomatis dari HTTP ke HTTPS
+
+2. JWT:
+   - Secret key dari environment variable
+   - Expires dalam 24 jam
+   - Refresh token untuk perpanjangan sesi
+
+3. Rate Limiting:
+   - Berbasis IP dan user
+   - Menggunakan sliding window
+   - Penyimpanan in-memory
+
+## 3. Fitur Keamanan
+
+### 3.1 Rate Limiting
+1. Global Limiter:
+   - 2000 request per 15 menit per IP
+   - Berlaku untuk rute sensitif:
+     * /auth/*: Autentikasi
+     * /api/orders/*: Pemesanan
+     * /api/payments/*: Pembayaran
+   - Response headers:
+     * X-RateLimit-Limit
+     * X-RateLimit-Remaining
+     * X-RateLimit-Reset
+
+2. IP Throttling:
+   - Minimal jeda 200ms antara request
+   - Mencegah brute force
+   - Implementasi dengan sliding window
+   - Custom error response
+   - Blacklist untuk IP mencurigakan
+
+3. User Throttling:
+   - 3000 request per 15 menit
+   - Berbasis user ID
+   - Khusus endpoint autentikasi:
+     * Login
+     * Register
+     * Password reset
+   - Notifikasi jika mendekati limit
+
+### 3.2 Autentikasi
+1. JWT Authentication:
+   - Format token: Bearer {token}
+   - Payload berisi:
+     * user_id
+     * email
+     * role
+     * exp (expiration)
+   - Validasi:
+     * Signature
+     * Expiration
+     * Token format
+
+2. Admin Authentication:
+   - Role-based access control
+   - Middleware khusus admin
+   - Endpoint terproteksi:
+     * /api/admin/*
+     * /api/inventory/*
+   - Logging akses admin
+
+### 3.3 Session Management
+1. Cookie Security:
+   - HttpOnly flag
+   - Secure flag
+   - SameSite policy
+   - Domain restriction
+
+2. CORS Policy:
+   - Whitelist domain
+   - Metode yang diizinkan
+   - Header yang diizinkan
+   - Credentials handling
+
+## 4. Routing dan Proxy
+
+### 4.1 Halaman Publik
+1. Halaman Utama (/):
+   - Landing page
+   - Katalog produk
+   - Featured items
+
+2. Autentikasi:
+   - /login: Form login
+   - /register: Form registrasi
+   - /forgot-password: Reset password
+
+3. Shopping:
+   - /cart: Keranjang belanja
+   - /katalog: Daftar produk
+   - /product/:id: Detail produk
+
+4. Fitur Khusus:
+   - /simulasi: Simulator build PC
+   - /pc-ready: Paket PC siap pakai
+   - /compare: Perbandingan produk
+
+### 4.2 Proxy ke Microservices
+
+1. User Service (Port 3001):
+   a. Autentikasi:
+      - POST /auth/login: Login user
+      - POST /auth/register: Registrasi
+      - GET /auth/user: Info user
+      - POST /auth/logout: Logout
+
+   b. OAuth:
+      - GET /auth/google: Google login
+      - GET /auth/github: GitHub login
+      - GET /auth/{provider}/callback: OAuth callback
+
+   c. Profil:
+      - GET /profile: Data profil
+      - PUT /profile: Update profil
+      - PATCH /profile/password: Ganti password
+
+2. Product Service (Port 3002):
+   a. Produk:
+      - GET /api/products: List produk
+      - GET /api/products/:id: Detail produk
+      - POST /api/products: Tambah produk (admin)
+      - PUT /api/products/:id: Update produk (admin)
+      - DELETE /api/products/:id: Hapus produk (admin)
+
+   b. Inventaris:
+      - GET /api/inventory: Stock status
+      - PATCH /api/inventory/:id: Update stock
+      - GET /api/inventory/history: Log perubahan
+
+3. Order Service (Port 3003):
+   a. Pesanan:
+      - POST /api/orders: Buat pesanan
+      - GET /api/orders: List pesanan user
+      - GET /api/orders/:id: Detail pesanan
+      - PATCH /api/orders/:id/status: Update status
+
+   b. Keranjang:
+      - POST /orders/cart: Tambah ke keranjang
+      - GET /orders/cart: Lihat keranjang
+      - DELETE /orders/cart/:id: Hapus item
+
+   c. Admin:
+      - GET /api/admin/orders: Semua pesanan
+      - PATCH /api/admin/orders/:id: Update pesanan
+      - DELETE /api/admin/orders/:id: Hapus pesanan
+
+4. Payment Service (Port 3004):
+   a. Pembayaran:
+      - POST /api/payments: Proses pembayaran
+      - GET /api/payments/:id: Status pembayaran
+      - POST /api/payments/callback: Payment gateway callback
+
+   b. Refund:
+      - POST /api/payments/:id/refund: Proses refund
+      - GET /api/payments/:id/refund: Status refund
+
+## 5. Penanganan Error
+
+### 5.1 Error Umum
+1. Autentikasi (401):
+   - Token tidak ada
+   - Token expired
+   - Token invalid
+   - Response format:
+     ```json
+     {
+       "status": 401,
+       "message": "Token tidak valid atau tidak ada",
+       "error": "Unauthorized"
+     }
+     ```
+
+2. Otorisasi (403):
+   - Bukan admin
+   - Role tidak cukup
+   - Response format:
+     ```json
+     {
+       "status": 403,
+       "message": "Akses ditolak",
+       "error": "Forbidden"
+     }
+     ```
+
+3. Rate Limit (429):
+   - Limit tercapai
+   - Response headers:
+     * Retry-After
+     * X-RateLimit-Reset
+   - Response format:
+     ```json
+     {
+       "status": 429,
+       "message": "Terlalu banyak request",
+       "retryAfter": 3600
+     }
+     ```
+
+4. Server Error (500):
+   - Database error
+   - Service down
+   - Network error
+   - Response format:
+     ```json
+     {
+       "status": 500,
+       "message": "Terjadi kesalahan internal",
+       "requestId": "uuid-v4"
+     }
+     ```
+
+### 5.2 Error Logging
+1. Morgan Logger:
+   - Format: combined
+   - Rotating file daily
+   - Fields:
+     * timestamp
+     * method
+     * url
+     * status
+     * response-time
+     * user-agent
+
+2. Console Logging:
+   - Development mode
+   - Stack trace
+   - Request/Response body
+   - Headers
+
+3. Error Tracking:
+   - Request ID
+   - User context
+   - Error stack
+   - System metrics
+
+## 6. Fitur OAuth
+
+### 6.1 Google OAuth
+1. Konfigurasi:
+   - Client ID
+   - Client Secret
+   - Redirect URI
+   - Scope:
+     * email
+     * profile
+
+2. Flow:
+   - Redirect ke Google
+   - Callback handling
+   - Token exchange
+   - User info fetch
+
+3. Session:
+   - Cookie setup
+   - State validation
+   - Token storage
+
+### 6.2 GitHub OAuth
+1. Konfigurasi:
+   - Client ID
+   - Client Secret
+   - Callback URL
+   - Scope:
+     * user
+     * email
+
+2. Flow:
+   - Authorization request
+   - Code exchange
+   - Token validation
+   - Profile fetch
+
+3. Error Handling:
+   - Invalid state
+   - Access denied
+   - API rate limit
+
+## 7. Header Management
+
+### 7.1 Request Headers
+1. Authorization:
+   - Format: Bearer {token}
+   - Validation rules
+   - Error handling
+
+2. User Headers:
+   - user-id: Unique identifier
+   - user-email: Email address
+   - user-role: User role
+
+3. Custom Headers:
+   - x-request-id: Tracking
+   - x-forwarded-for: IP
+   - x-real-ip: Client IP
+
+### 7.2 Response Headers
+1. Security Headers:
+   - X-Frame-Options
+   - X-XSS-Protection
+   - X-Content-Type-Options
+   - Content-Security-Policy
+
+2. Cache Headers:
+   - Cache-Control
+   - ETag
+   - Last-Modified
+
+3. Custom Headers:
+   - X-Response-Time
+   - X-Rate-Limit-*
+   - X-Version
+
+## 8. Server Configuration
+
+### 8.1 HTTPS Server
+1. SSL/TLS:
+   - TLS 1.2/1.3
+   - Cipher suites
+   - Key size: 2048 bits
+
+2. Sertifikat:
+   - Self-signed (dev)
+   - Let's Encrypt (prod)
+   - Auto-renewal
+
+3. Performance:
+   - Keep-alive
+   - Compression
+   - HTTP/2 support
+
+### 8.2 HTTP Redirect
+1. Redirect Rules:
+   - HTTP → HTTPS
+   - www → non-www
+   - Trailing slashes
+
+2. Status Codes:
+   - 301: Permanent
+   - 302: Temporary
+   - 307: Temporary (POST)
+
+3. Security:
+   - HSTS
+   - Preload
+   - IncludeSubDomains
+
+## 9. Best Practices
+
+### 9.1 Keamanan
+1. Request Validation:
+   - Input sanitization
+   - Type checking
+   - Size limits
+
+2. Response Security:
+   - Data masking
+   - Error handling
+   - Version hiding
+
+3. Infrastructure:
+   - Regular updates
+   - Security scanning
+   - Audit logging
+
+### 9.2 Performance
+1. Caching Strategy:
+   - Response caching
+   - Route caching
+   - Token caching
+
+2. Load Management:
+   - Request queuing
+   - Circuit breaking
+   - Timeout handling
+
+3. Monitoring:
+   - Health checks
+   - Performance metrics
+   - Resource usage
+
+## 10. Troubleshooting
+
+### 10.1 Masalah Umum
+1. Token Issues:
+   - Expired token
+   - Invalid signature
+   - Missing claims
+   - Debug steps:
+     * Decode token
+     * Check expiry
+     * Verify signature
+
+2. Rate Limiting:
+   - Limit exceeded
+   - IP blocking
+   - User blocking
+   - Resolution:
+     * Check limits
+     * Reset counters
+     * Whitelist IP
+
+3. Proxy Errors:
+   - Service unavailable
+   - Timeout
+   - Network issues
+   - Debug steps:
+     * Check service health
+     * Verify network
+     * Check logs
+
+### 10.2 Monitoring
+1. Health Checks:
+   - Service status
+   - Database connection
+   - Cache status
+   - Memory usage
+
+2. Alerts:
+   - Error rate
+   - Response time
+   - Resource usage
+   - Security events
+
+3. Maintenance:
+   - Log rotation
+   - Cache cleanup
+   - Session cleanup
+   - Certificate renewal
+
+# Penjelasan Mendalam: JSON Web Token (JWT)
+
+## 1. Apa itu JWT?
+JWT (JSON Web Token) adalah standar terbuka (RFC 7519) untuk membuat token yang aman dan dapat diverifikasi. JWT terdiri dari tiga bagian:
+
+1. Header:
+   ```json
+   {
+     "alg": "HS256",    // Algoritma yang digunakan
+     "typ": "JWT"       // Tipe token
+   }
+   ```
+
+2. Payload:
+   ```json
+   {
+     "id": "user123",        // User ID
+     "email": "user@example.com",
+     "role": "admin",        // Role pengguna
+     "iat": 1516239022,     // Issued At (waktu pembuatan)
+     "exp": 1516242622      // Expiration (waktu kadaluarsa)
+   }
+   ```
+
+3. Signature:
+   ```javascript
+   HMACSHA256(
+     base64UrlEncode(header) + "." +
+     base64UrlEncode(payload),
+     secret_key
+   )
+   ```
+
+## 2. Cara Kerja JWT
+
+### 2.1 Proses Login
+1. User mengirim credentials:
+   ```json
+   POST /auth/login
+   {
+     "email": "user@example.com",
+     "password": "password123"
+   }
+   ```
+
+2. Server memverifikasi dan membuat token:
+   ```javascript
+   const generateToken = (user) => {
+     const payload = {
+       id: user.id,
+       email: user.email,
+       role: user.role,
+       iat: Math.floor(Date.now() / 1000),
+       exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 jam
+     };
+     
+     return jwt.sign(payload, JWT_SECRET);
+   };
+   ```
+
+3. Server mengirim response:
+   ```json
+   {
+     "success": true,
+     "token": "eyJhbGciOiJIUzI1NiIs...",
+     "user": {
+       "id": "user123",
+       "email": "user@example.com",
+       "role": "admin"
+     }
+   }
+   ```
+
+### 2.2 Proses Verifikasi
+1. Client mengirim request dengan token:
+   ```http
+   GET /api/products
+   Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+   ```
+
+2. Gateway memverifikasi token:
+   ```javascript
+   const verifyToken = async (req, res, next) => {
+     try {
+       // Extract token
+       const token = req.headers.authorization?.split(' ')[1];
+       if (!token) {
+         throw new Error('Token tidak ditemukan');
+       }
+
+       // Verify signature dan decode
+       const decoded = jwt.verify(token, JWT_SECRET);
+       
+       // Cek expiration
+       if (decoded.exp < Math.floor(Date.now() / 1000)) {
+         throw new Error('Token sudah kadaluarsa');
+       }
+       
+       // Tambahkan user ke request
+       req.user = decoded;
+       next();
+     } catch (error) {
+       res.status(401).json({
+         success: false,
+         message: error.message
+       });
+     }
+   };
+   ```
+
+## 3. Penggunaan JWT di SimTech
+
+### 3.1 Autentikasi
+1. Login Email/Password:
+   - User login dengan credentials
+   - Server generate JWT
+   - Token disimpan di localStorage client
+
+2. OAuth (Google/GitHub):
+   - User login dengan provider
+   - Provider mengirim user data
+   - Server generate JWT
+   - Token disimpan di localStorage client
+
+### 3.2 Otorisasi
+1. Role-Based Access:
+   ```javascript
+   const checkRole = (allowedRoles) => {
+     return (req, res, next) => {
+       const userRole = req.user.role;
+       if (!allowedRoles.includes(userRole)) {
+         return res.status(403).json({
+           success: false,
+           message: 'Akses ditolak'
+         });
+       }
+       next();
+     };
+   };
+
+   // Penggunaan
+   app.get('/api/admin/users', 
+     verifyToken, 
+     checkRole(['admin']), 
+     handleRequest
+   );
+   ```
+
+2. Permission Check:
+   ```javascript
+   const permissions = {
+     admin: ['read', 'write', 'delete'],
+     staff: ['read', 'write'],
+     user: ['read']
+   };
+
+   const checkPermission = (requiredPermission) => {
+     return (req, res, next) => {
+       const userRole = req.user.role;
+       if (!permissions[userRole].includes(requiredPermission)) {
+         return res.status(403).json({
+           success: false,
+           message: 'Permission tidak cukup'
+         });
+       }
+       next();
+     };
+   };
+   ```
+
+### 3.3 Token Management
+
+1. Token Refresh:
+   ```javascript
+   const refreshToken = async (oldToken) => {
+     try {
+       const decoded = jwt.verify(oldToken, JWT_SECRET);
+       delete decoded.exp;
+       delete decoded.iat;
+       
+       // Generate token baru
+       return jwt.sign(decoded, JWT_SECRET, { expiresIn: '24h' });
+     } catch (error) {
+       throw new Error('Refresh token gagal');
+     }
+   };
+   ```
+
+2. Token Blacklisting:
+   ```javascript
+   const blacklistedTokens = new Set();
+
+   const blacklistToken = (token) => {
+     blacklistedTokens.add(token);
+     // Hapus dari blacklist setelah expired
+     setTimeout(() => {
+       blacklistedTokens.delete(token);
+     }, TOKEN_EXPIRY);
+   };
+
+   // Cek blacklist dalam verifikasi
+   const isBlacklisted = (token) => {
+     return blacklistedTokens.has(token);
+   };
+   ```
+
+### 3.4 Security Measures
+
+1. Token Payload Protection:
+   - Tidak menyimpan data sensitif
+   - Minimal necessary information
+   - Enkripsi data sensitif jika diperlukan
+
+2. Token Expiration:
+   ```javascript
+   const tokenConfig = {
+     accessToken: {
+       expiresIn: '24h',
+       algorithm: 'HS256'
+     },
+     refreshToken: {
+       expiresIn: '7d',
+       algorithm: 'HS256'
+     }
+   };
+   ```
+
+3. Error Handling:
+   ```javascript
+   const handleTokenError = (error) => {
+     switch (error.name) {
+       case 'TokenExpiredError':
+         return {
+           status: 401,
+           message: 'Token sudah kadaluarsa'
+         };
+       case 'JsonWebTokenError':
+         return {
+           status: 401,
+           message: 'Token tidak valid'
+         };
+       case 'NotBeforeError':
+         return {
+           status: 401,
+           message: 'Token belum aktif'
+         };
+       default:
+         return {
+           status: 500,
+           message: 'Internal server error'
+         };
+     }
+   };
+   ```
+
+## 4. Best Practices JWT
+
+1. Token Storage:
+   - Gunakan httpOnly cookies untuk web
+   - Secure flag untuk HTTPS
+   - Implement CSRF protection
+
+2. Token Lifetime:
+   - Access token: 24 jam
+   - Refresh token: 7 hari
+   - Auto logout pada token expired
+
+3. Security Headers:
+   ```javascript
+   app.use((req, res, next) => {
+     res.setHeader('X-Content-Type-Options', 'nosniff');
+     res.setHeader('X-Frame-Options', 'DENY');
+     res.setHeader('X-XSS-Protection', '1; mode=block');
+     next();
+   });
+   ```
+
+4. Rate Limiting:
+   ```javascript
+   const loginLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000, // 15 menit
+     max: 5, // 5 percobaan
+     message: 'Terlalu banyak percobaan login, coba lagi nanti'
+   });
+
+   app.post('/auth/login', loginLimiter, handleLogin);
+   ```

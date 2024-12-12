@@ -1,0 +1,549 @@
+# Potential Questions and Answers for SimTech Project
+
+## 1. Architecture & Design
+
+Q: "Mengapa memilih arsitektur microservices dibandingkan monolithic?"
+A: Beberapa alasan utama:
+1. Skalabilitas - Setiap service bisa di-scale secara independen
+2. Maintainability - Lebih mudah maintain karena codebase terpisah
+3. Teknologi Fleksibel - Setiap service bisa menggunakan teknologi berbeda
+4. Fault Isolation - Jika satu service down, yang lain tetap berjalan
+5. Development Speed - Tim berbeda bisa bekerja pada service berbeda
+
+Q: "Bagaimana cara microservices berkomunikasi satu sama lain?"
+A: Menggunakan dua metode:
+1. Synchronous (REST API) melalui Gateway Service untuk:
+   - User authentication
+   - Product queries
+   - Direct responses
+2. Asynchronous (RabbitMQ) untuk:
+   - Order updates
+   - Inventory synchronization
+   - Notifications
+
+Q: "Kenapa menggunakan RabbitMQ? Apa tidak bisa pakai REST API saja?"
+A: RabbitMQ dipilih untuk:
+1. Reliable Message Delivery - Pesan tidak hilang saat service down
+2. Asynchronous Processing - Tidak perlu menunggu response
+3. Decoupling - Service tidak perlu tahu tentang service lain
+4. Message Persistence - Pesan tersimpan sampai diproses
+5. Load Balancing - Distribusi pesan ke multiple consumers
+
+## 2. Security
+
+Q: "Bagaimana sistem mengamankan data sensitif user?"
+A: Beberapa layer security yang diimplementasi:
+1. HTTPS/SSL untuk enkripsi data in transit
+2. JWT untuk autentikasi
+3. Role-based access control
+4. Rate limiting untuk prevent brute force
+5. Input validation dan sanitization
+6. Secure session management
+7. CORS configuration
+
+Q: "Apa perbedaan antara authentication dan authorization dalam sistem ini?"
+A: 
+- Authentication: Proses verifikasi identitas user (siapa mereka)
+  - Implementasi: JWT tokens, session management
+  - Contoh: Login dengan email/password atau OAuth
+
+- Authorization: Proses verifikasi hak akses (apa yang boleh mereka lakukan)
+  - Implementasi: Role-based access control
+  - Contoh: Hanya admin yang bisa akses inventory management
+
+## 3. Database
+
+Q: "Kenapa memilih MySQL dibanding database lain seperti MongoDB?"
+A: Alasan pemilihan MySQL:
+1. ACID Compliance - Penting untuk transaksi finansial
+2. Structured Data - Data memiliki relasi yang jelas
+3. Strong Consistency - Penting untuk inventory dan orders
+4. Familiar - Tim lebih familiar dengan SQL
+5. Mature Technology - Support dan dokumentasi lengkap
+
+Q: "Bagaimana menangani concurrent transactions di database?"
+A: Beberapa strategi yang digunakan:
+1. Connection Pooling untuk manage koneksi
+2. Database Transactions untuk atomic operations
+3. Row-level locking untuk inventory updates
+4. Optimistic locking untuk conflict resolution
+5. Isolation levels sesuai kebutuhan
+
+## 4. Performance
+
+Q: "Bagaimana sistem menangani high traffic?"
+A: Beberapa strategi yang diimplementasi:
+1. Load Balancing di level Gateway
+2. Connection Pooling untuk database
+3. Caching (TODO - belum diimplementasi)
+4. Rate Limiting untuk protect resources
+5. Horizontal Scaling capability dengan Docker
+6. Asynchronous processing untuk heavy tasks
+
+Q: "Apa strategi scaling yang digunakan?"
+A: Kombinasi dari:
+1. Horizontal Scaling:
+   - Multiple instances per service
+   - Load balancing
+   - Stateless design
+
+2. Vertical Scaling:
+   - Increase resources per container
+   - Database optimization
+   - Connection pooling
+
+## 5. Error Handling
+
+Q: "Bagaimana sistem menangani kegagalan di salah satu service?"
+A: Beberapa strategi:
+1. Circuit Breaker Pattern (TODO)
+2. Retry Mechanism dengan backoff
+3. Fallback Mechanisms
+4. Error Logging dan Monitoring
+5. Transaction Rollback
+6. Message Queue Persistence
+
+Q: "Bagaimana sistem melakukan monitoring dan logging?"
+A: Menggunakan beberapa metode:
+1. HTTP Request Logging dengan Morgan
+2. Error Logging ke file system
+3. Transaction Logging di database
+4. RabbitMQ message tracking
+5. Performance metrics collection (TODO)
+
+## 6. Development Process
+
+Q: "Bagaimana proses development dan deployment?"
+A: Menggunakan modern development workflow:
+1. Version Control dengan Git
+2. Docker untuk containerization
+3. Docker Compose untuk orchestration
+4. Environment-based configuration
+5. Automated testing (TODO)
+6. CI/CD pipeline (TODO)
+
+Q: "Apa tantangan terbesar dalam pengembangan sistem ini?"
+A: Beberapa tantangan utama:
+1. Koordinasi antar service
+2. State management dalam distributed system
+3. Error handling across services
+4. Session management dengan OAuth
+5. Ensuring data consistency
+
+## 7. Future Improvements
+
+Q: "Apa rencana pengembangan ke depan?"
+A: Beberapa fitur yang direncanakan:
+1. Implement caching dengan Redis
+2. Add automated testing
+3. Setup CI/CD pipeline
+4. Implement monitoring system
+5. Add email notifications
+6. Improve error handling
+7. Add payment gateway integration
+
+Q: "Bagaimana strategi backup dan disaster recovery?"
+A: Rencana implementasi:
+1. Database backup strategy
+2. Service redundancy
+3. Data replication
+4. Backup automation
+5. Recovery testing procedures
+
+## 8. Technical Decisions
+
+Q: "Kenapa memilih Node.js untuk backend?"
+A: Beberapa alasan:
+1. Asynchronous I/O - Cocok untuk high I/O operations
+2. Large ecosystem - Banyak package tersedia
+3. JavaScript everywhere - Konsistensi dengan frontend
+4. Active community - Support dan resources
+5. Performance - Baik untuk real-time applications
+
+Q: "Bagaimana penanganan session di multiple service?"
+A: Menggunakan kombinasi:
+1. JWT untuk authentication
+2. Centralized session storage (TODO)
+3. Consistent session validation
+4. Secure cookie management
+5. OAuth state management
+
+## 9. API Endpoints & Integration
+
+Q: "Jelaskan flow dari proses order dari awal sampai akhir!"
+A: Flow lengkap proses order:
+1. Cart Creation:
+   - User menambahkan item ke cart
+   - Validasi stok produk
+   - Kalkulasi total harga
+
+2. Order Creation:
+   - Convert cart ke order
+   - Generate order ID
+   - Lock inventory items
+
+3. Payment Processing:
+   - Validasi total pembayaran
+   - Record transaksi pembayaran
+   - Update status pembayaran
+
+4. Order Fulfillment:
+   - Update status order
+   - Kurangi stok produk
+   - Kirim notifikasi ke admin
+
+5. Status Updates:
+   - Admin update status pengiriman
+   - Notifikasi ke user
+   - Update order history
+
+Q: "Bagaimana sistem menangani kegagalan di tengah proses order?"
+A: Beberapa mekanisme:
+1. Transaction Rollback:
+   ```javascript
+   try {
+       await db.query('START TRANSACTION');
+       // Process order
+       await db.query('COMMIT');
+   } catch (error) {
+       await db.query('ROLLBACK');
+       // Restore state
+   }
+   ```
+
+2. Inventory Lock:
+   - Temporary hold pada stok
+   - Timeout mechanism
+   - Automatic release jika gagal
+
+3. Payment Validation:
+   - Verify before confirm
+   - Timeout handling
+   - Refund mechanism
+
+Q: "Bagaimana implementasi rate limiting pada API?"
+A: Implementasi di beberapa level:
+1. Global Rate Limiting:
+   ```javascript
+   const limiter = rateLimit({
+       windowMs: 15 * 60 * 1000,  // 15 minutes
+       max: 100                    // limit each IP
+   });
+   ```
+
+2. Endpoint-Specific Limiting:
+   ```javascript
+   const paymentLimiter = rateLimit({
+       windowMs: 60 * 1000,       // 1 minute
+       max: 5                      // 5 requests per minute
+   });
+   ```
+
+3. User-Based Limiting:
+   - Based on user ID
+   - Different limits per role
+   - Custom error responses
+
+Q: "Jelaskan perbedaan antara berbagai HTTP methods yang digunakan!"
+A: Penggunaan HTTP methods:
+1. GET:
+   - Fetch data (products, orders)
+   - No body payload
+   - Cacheable
+   - Example: `/api/products`
+
+2. POST:
+   - Create new resource
+   - Has request body
+   - Not cacheable
+   - Example: `/api/orders`
+
+3. PUT:
+   - Update entire resource
+   - Idempotent
+   - Example: `/api/products/:id`
+
+4. PATCH:
+   - Partial update
+   - Specific fields
+   - Example: `/api/orders/:id/status`
+
+5. DELETE:
+   - Remove resource
+   - Idempotent
+   - Example: `/api/cart/:id`
+
+Q: "Bagaimana sistem menangani versioning API?"
+A: Beberapa strategi:
+1. URL Versioning:
+   - `/api/v1/products`
+   - `/api/v2/products`
+   - Clear and explicit
+
+2. Header Versioning:
+   ```javascript
+   app.use((req, res, next) => {
+       const version = req.headers['api-version'] || '1';
+       req.apiVersion = version;
+       next();
+   });
+   ```
+
+3. Content Negotiation:
+   - Accept header
+   - Content-Type variations
+   - Version-specific responses
+
+Q: "Bagaimana penanganan error di API endpoints?"
+A: Implementasi error handling:
+1. Standard Error Format:
+   ```javascript
+   {
+       "success": false,
+       "error": {
+           "code": "INVALID_INPUT",
+           "message": "Invalid product ID",
+           "details": {...}
+       }
+   }
+   ```
+
+2. HTTP Status Codes:
+   - 400: Bad Request
+   - 401: Unauthorized
+   - 403: Forbidden
+   - 404: Not Found
+   - 429: Too Many Requests
+   - 500: Internal Error
+
+3. Error Middleware:
+   ```javascript
+   app.use((error, req, res, next) => {
+       console.error(error);
+       res.status(error.status || 500).json({
+           success: false,
+           message: error.message
+       });
+   });
+   ```
+
+Q: "Bagaimana sistem memastikan konsistensi data antar service?"
+A: Beberapa strategi:
+1. Distributed Transactions:
+   - Two-phase commit
+   - Saga pattern
+   - Compensation transactions
+
+2. Event Sourcing:
+   - RabbitMQ events
+   - Event logging
+   - State reconstruction
+
+3. Eventual Consistency:
+   - Async updates
+   - Background jobs
+   - Reconciliation process
+
+Q: "Jelaskan implementasi authentication di API endpoints!"
+A: Multiple layers:
+1. JWT Validation:
+   ```javascript
+   const validateToken = (req, res, next) => {
+       const token = req.headers.authorization?.split(' ')[1];
+       if (!token) {
+           return res.status(401).json({
+               success: false,
+               message: 'No token provided'
+           });
+       }
+       try {
+           const decoded = jwt.verify(token, process.env.JWT_SECRET);
+           req.user = decoded;
+           next();
+       } catch (error) {
+           res.status(401).json({
+               success: false,
+               message: 'Invalid token'
+           });
+       }
+   };
+   ```
+
+2. Role-Based Access:
+   ```javascript
+   const requireAdmin = (req, res, next) => {
+       if (req.user.role !== 'admin') {
+           return res.status(403).json({
+               success: false,
+               message: 'Admin access required'
+           });
+       }
+       next();
+   };
+   ```
+
+3. OAuth Integration:
+   - Google OAuth
+   - GitHub OAuth
+   - Session management
+
+Q: "Bagaimana cara testing API endpoints?"
+A: Several testing approaches:
+1. Unit Testing:
+   ```javascript
+   describe('Product API', () => {
+       it('should return product list', async () => {
+           const res = await request(app)
+               .get('/api/products')
+               .expect(200);
+           expect(res.body).toHaveProperty('products');
+       });
+   });
+   ```
+
+2. Integration Testing:
+   - End-to-end flows
+   - Service interactions
+   - Database operations
+
+3. Load Testing:
+   - Concurrent requests
+   - Performance metrics
+   - Stress testing
+
+## 10. HTTP vs HTTPS
+
+Q: "Jelaskan perbedaan mendasar antara HTTP dan HTTPS!"
+A: 
+
+1. **Definisi:**
+   - HTTP: Protokol standar untuk transmisi data di web, tanpa enkripsi
+   - HTTPS: Versi aman dari HTTP dengan enkripsi SSL/TLS
+
+2. **Karakteristik Utama:**
+   - HTTP:
+     * Port 80
+     * Plaintext transmission
+     * No encryption
+     * Faster performance
+   
+   - HTTPS:
+     * Port 443
+     * Encrypted transmission
+     * SSL/TLS security
+     * Slight performance overhead
+
+3. **Security Features:**
+   - HTTP:
+     * No data encryption
+     * No server verification
+     * Vulnerable to MITM attacks
+   
+   - HTTPS:
+     * End-to-end encryption
+     * Server authentication
+     * Data integrity
+     * Protection against tampering
+
+Q: "Bagaimana cara kerja SSL/TLS dalam HTTPS?"
+A: 
+
+1. **SSL Handshake Process:**
+   ```plaintext
+   1. Client Hello (Client → Server)
+      - Supported SSL/TLS versions
+      - Supported cipher suites
+      - Random number
+
+   2. Server Hello (Server → Client)
+      - Selected SSL/TLS version
+      - Selected cipher suite
+      - Server certificate
+      - Random number
+
+   3. Authentication
+      - Client verifies server certificate
+      - Optional client certificate
+
+   4. Key Exchange
+      - Generate session keys
+      - Begin encrypted communication
+   ```
+
+2. **Implementation in Node.js:**
+   ```javascript
+   const https = require('https');
+   const fs = require('fs');
+
+   const options = {
+       key: fs.readFileSync('private-key.pem'),
+       cert: fs.readFileSync('certificate.pem')
+   };
+
+   https.createServer(options, app)
+       .listen(443);
+   ```
+
+Q: "Apa keuntungan dan kerugian menggunakan HTTPS?"
+A:
+
+1. **Keuntungan HTTPS:**
+   - Data security & privacy
+   - Server authentication
+   - SEO benefits
+   - Browser trust indicators
+   - Required for modern features
+
+2. **Kerugian HTTPS:**
+   - Certificate cost
+   - Setup complexity
+   - Performance overhead
+   - Certificate maintenance
+   - Additional server resources
+
+Q: "Bagaimana implementasi redirect HTTP ke HTTPS?"
+A:
+
+1. **Node.js Implementation:**
+   ```javascript
+   app.use((req, res, next) => {
+       if (!req.secure) {
+           return res.redirect([
+               'https://',
+               req.hostname,
+               req.url
+           ].join(''));
+       }
+       next();
+   });
+   ```
+
+2. **Security Headers:**
+   ```javascript
+   app.use((req, res, next) => {
+       res.setHeader(
+           'Strict-Transport-Security',
+           'max-age=31536000'
+       );
+       next();
+   });
+   ```
+
+Q: "Bagaimana menangani SSL Certificate?"
+A:
+
+1. **Types of Certificates:**
+   - DV (Domain Validation)
+   - OV (Organization Validation)
+   - EV (Extended Validation)
+
+2. **Certificate Management:**
+   - Regular renewal
+   - Automated with Let's Encrypt
+   - Monitoring expiration
+   - Proper storage of private keys
+
+3. **Development vs Production:**
+   - Self-signed for development
+   - Trusted CA for production
+   - Different configurations

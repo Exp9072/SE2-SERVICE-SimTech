@@ -1,0 +1,581 @@
+# Dokumentasi User Service
+
+## 1. Gambaran Umum
+User Service adalah microservice yang menangani autentikasi dan manajemen pengguna dalam sistem SimTech. Service ini mendukung multiple authentication methods termasuk email/password, Google OAuth, dan GitHub OAuth.
+
+## 2. Teknologi yang Digunakan
+
+### 2.1 Dependencies
+```javascript
+const express = require('express');          // Web framework
+const session = require('express-session');  // Session management
+const passport = require('passport');        // Authentication middleware
+const GoogleStrategy = require('passport-google-oauth20').Strategy;  // Google OAuth
+const GitHubStrategy = require('passport-github2').Strategy;        // GitHub OAuth
+const mysql = require('mysql2/promise');     // Database connector
+const jwt = require('jsonwebtoken');         // JWT handling
+```
+
+### 2.2 Konfigurasi Database
+```javascript
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+});
+```
+
+### 2.3 Session Configuration
+```javascript
+app.use(session({
+    secret: 'simtech-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+    },
+}));
+```
+
+## 3. Authentication Strategies
+
+### 3.1 Google OAuth Strategy
+```javascript
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL,
+}, async (accessToken, refreshToken, profile, done) => {
+    // Implementation
+}));
+```
+
+**Proses:**
+1. Menerima data profil dari Google
+2. Ekstrak email dan foto profil
+3. Cek user di database
+4. Buat user baru jika belum ada
+5. Return user data ke passport
+
+### 3.2 GitHub OAuth Strategy
+```javascript
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: process.env.GITHUB_CALLBACK_URL,
+    proxy: true
+}, async (accessToken, refreshToken, profile, done) => {
+    // Implementation
+}));
+```
+
+**Proses:**
+1. Menerima data profil dari GitHub
+2. Gunakan username sebagai email
+3. Cek user di database
+4. Buat user baru jika belum ada
+5. Return user data ke passport
+
+### 3.3 Session Management
+```javascript
+passport.serializeUser((user, done) => {
+    done(null, {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profile_picture,
+    });
+});
+
+passport.deserializeUser(async (user, done) => {
+    // Implementation
+});
+```
+
+## 4. API Endpoints
+
+### 4.1 Check Authentication Status
+```http
+GET /auth/user
+```
+
+**Deskripsi:**
+Endpoint ini digunakan untuk memverifikasi status autentikasi pengguna saat ini. Berguna untuk:
+- Validasi sesi pengguna saat pertama kali membuka aplikasi
+- Pengecekan akses ke halaman terproteksi
+- Mendapatkan data pengguna yang sedang login
+
+**Mekanisme Verifikasi:**
+1. Cek array LOGIN_GOOGLE:
+   - Array menyimpan data login terakhir
+   - Prioritas tertinggi untuk kompatibilitas OAuth
+
+2. Cek Session:
+   - Verifikasi req.session.user
+   - Validasi data sesi yang tersimpan
+
+3. Cek JWT Token:
+   - Ekstrak token dari header Authorization
+   - Verifikasi signature dengan JWT_SECRET
+   - Decode payload untuk mendapatkan user ID
+
+4. Database Lookup:
+   - Query user berdasarkan ID
+   - Validasi keberadaan user
+   - Update sesi jika perlu
+
+**Headers Required:**
+```
+Authorization: Bearer <jwt_token>  // Optional, jika menggunakan JWT
+```
+
+**Response Success (200 OK):**
+```json
+{
+    "success": true,
+    "user": {
+        "id": 1,
+        "email": "user@example.com",
+        "role": "user",
+        "name": "User Name",
+        "profilePicture": "url/to/picture"
+    }
+}
+```
+
+**Error Responses:**
+1. Unauthorized (401):
+```json
+{
+    "success": false,
+    "message": "Unauthorized"
+}
+```
+
+2. Server Error (500):
+```json
+{
+    "success": false,
+    "message": "Internal server error"
+}
+```
+
+**Use Cases:**
+1. Auto-login saat refresh halaman
+2. Validasi akses ke halaman admin
+3. Mendapatkan data profil user
+4. Pengecekan role untuk fitur tertentu
+
+### 4.2 Google OAuth Login
+```http
+GET /auth/google
+GET /auth/google/callback
+```
+
+**Deskripsi:**
+Endpoint untuk autentikasi menggunakan akun Google. Terdiri dari dua endpoint:
+1. `/auth/google`: Memulai proses OAuth dengan Google
+2. `/auth/google/callback`: Menerima data dari Google setelah autentikasi berhasil
+
+**Flow Autentikasi:**
+1. Inisiasi OAuth:
+   - User mengklik "Login with Google"
+   - Redirect ke halaman login Google
+   - Google meminta izin akses
+
+2. Callback Processing:
+   - Google mengirim data ke callback URL
+   - Verifikasi data dari Google
+   - Cek user di database
+   - Buat user baru jika belum ada
+   - Generate JWT token
+   - Set session data
+
+**Implementasi:**
+```javascript
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/' }),
+    async (req, res) => {
+        try {
+            const userData = {
+                id: req.user.id,
+                email: req.user.email,
+                name: req.user.name,
+                role: req.user.role,
+                profilePicture: req.user.profile_picture
+            };
+
+            // Set session & generate token
+            req.session.user = userData;
+            const token = jwt.sign(
+                { id: req.user.id, email: req.user.email, role: req.user.role },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            // Redirect based on role
+            const redirectUrl = userData.role === 'admin' 
+                ? `/inventaris?token=${token}`
+                : `/?token=${token}`;
+            res.redirect(redirectUrl);
+        } catch (error) {
+            res.redirect('/');
+        }
+    }
+);
+```
+
+**Data yang Disimpan:**
+1. Database:
+   - Email user
+   - Nama lengkap
+   - Foto profil
+   - OAuth provider (google)
+   - OAuth ID
+
+2. Session:
+   - User ID
+   - Email
+   - Role
+   - Profile data
+
+**Security Measures:**
+1. Validasi OAuth state
+2. Verifikasi token dari Google
+3. HTTPS untuk callback URL
+4. Secure session cookies
+
+### 4.3 GitHub OAuth Login
+```http
+GET /auth/github
+GET /auth/github/callback
+```
+
+**Deskripsi:**
+Endpoint untuk autentikasi menggunakan akun GitHub. Mirip dengan Google OAuth tetapi dengan beberapa perbedaan:
+- Menggunakan username GitHub sebagai email
+- Scope akses berbeda
+- Format data profil berbeda
+
+**Perbedaan dengan Google OAuth:**
+1. Data Profile:
+   - GitHub tidak menyediakan email secara default
+   - Format foto profil berbeda
+   - Username sebagai identifier utama
+
+2. Scope Permission:
+   - Meminta akses 'user:email'
+   - Tidak memerlukan akses profile seperti Google
+
+**Error Handling Khusus:**
+1. Email Not Found:
+   - Gunakan username sebagai fallback
+   - Tambahkan domain default jika perlu
+
+2. Profile Picture:
+   - Cek keberadaan foto
+   - Gunakan avatar default jika tidak ada
+
+### 4.4 Email/Password Registration
+```http
+POST /register
+```
+
+**Deskripsi:**
+Endpoint untuk mendaftarkan pengguna baru menggunakan email dan password. Mencakup validasi data dan pengecekan duplikasi.
+
+**Request Body:**
+```json
+{
+    "name": "User Name",
+    "email": "user@example.com",
+    "password": "password123"
+}
+```
+
+**Validasi Input:**
+1. Name:
+   - Tidak boleh kosong
+   - Minimal 2 karakter
+   - Hanya alfanumerik dan spasi
+
+2. Email:
+   - Format email valid
+   - Belum terdaftar di database
+   - Domain email valid
+
+3. Password:
+   - Minimal 8 karakter
+   - Harus mengandung huruf dan angka
+   - Tidak boleh sama dengan email
+
+**Proses Registration:**
+1. Input Validation:
+   ```javascript
+   if (!name || !email || !password) {
+       return res.status(400).json({
+           success: false,
+           message: 'All fields are required'
+       });
+   }
+   ```
+
+2. Email Uniqueness:
+   ```javascript
+   const [existingUser] = await db.query(
+       'SELECT * FROM users WHERE email = ?',
+       [email]
+   );
+   ```
+
+3. User Creation:
+   ```javascript
+   const [result] = await db.query(
+       'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+       [name, email, password, 'user']
+   );
+   ```
+
+**Security Measures:**
+1. Password Handling:
+   - Belum mengimplementasi hashing (TODO)
+   - Rencana menggunakan bcrypt
+   - Salt rounds: 10
+
+2. Email Verification:
+   - Belum diimplementasi (TODO)
+   - Rencana menggunakan JWT untuk verifikasi
+   - Link verifikasi expired dalam 24 jam
+
+### 4.5 Email/Password Login
+```http
+POST /login
+POST /auth/login
+```
+
+**Deskripsi:**
+Endpoint untuk login menggunakan email dan password. Tersedia di dua URL untuk kompatibilitas dengan frontend.
+
+**Request Body:**
+```json
+{
+    "email": "user@example.com",
+    "password": "password123"
+}
+```
+
+**Proses Login:**
+1. Credential Check:
+   ```javascript
+   const [rows] = await db.query(
+       'SELECT * FROM users WHERE email = ?',
+       [email]
+   );
+   ```
+
+2. Password Validation:
+   ```javascript
+   if (user.password !== password) {
+       return res.status(401).json({
+           success: false,
+           message: 'Invalid credentials'
+       });
+   }
+   ```
+
+3. Session Setup:
+   ```javascript
+   req.session.user = userData;
+   LOGIN_GOOGLE.push(userData);
+   ```
+
+4. Token Generation:
+   ```javascript
+   const token = jwt.sign(
+       { id: user.id, email: user.email, role: user.role },
+       process.env.JWT_SECRET,
+       { expiresIn: '24h' }
+   );
+   ```
+
+**Response Success:**
+```json
+{
+    "success": true,
+    "message": "Login successful",
+    "user": {
+        "id": 1,
+        "email": "user@example.com",
+        "name": "User Name",
+        "role": "user",
+        "profilePicture": "url/to/picture"
+    },
+    "token": "jwt_token_here"
+}
+```
+
+**Security Features:**
+1. Rate Limiting (TODO):
+   - Max 5 attempts per 15 minutes
+   - IP-based blocking
+   - Account locking after failed attempts
+
+2. Session Management:
+   - HttpOnly cookies
+   - Secure in production
+   - Session timeout
+
+### 4.6 Logout
+```http
+POST /logout
+```
+
+**Deskripsi:**
+Endpoint untuk mengakhiri sesi pengguna dan membersihkan semua data autentikasi.
+
+**Proses Logout:**
+1. Session Cleanup:
+   ```javascript
+   req.logout((err) => {
+       if (err) {
+           return res.status(500).json({
+               success: false,
+               message: 'Logout failed'
+           });
+       }
+   });
+   ```
+
+2. Session Destruction:
+   ```javascript
+   req.session.destroy((err) => {
+       if (err) {
+           return res.status(500).json({
+               success: false,
+               message: 'Session destruction failed'
+           });
+       }
+   });
+   ```
+
+3. Cookie Cleanup:
+   ```javascript
+   res.clearCookie('connect.sid', { path: '/' });
+   ```
+
+4. Global State Cleanup:
+   ```javascript
+   LOGIN_GOOGLE.length = 0;
+   ```
+
+**Security Considerations:**
+1. Token Invalidation:
+   - Clear client-side token
+   - Remove from localStorage
+   - Clear session cookies
+
+2. Force Logout:
+   - Clear all active sessions
+   - Invalidate remember-me tokens
+   - Clear persistent cookies
+
+**Use Cases:**
+1. Manual logout oleh user
+2. Force logout oleh admin
+3. Session timeout
+4. Security breach response
+
+## 5. Database Schema
+
+### 5.1 Table: users
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255),
+    role ENUM('user', 'admin') DEFAULT 'user',
+    oauth_provider VARCHAR(50),
+    oauth_id VARCHAR(255),
+    profile_picture TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 6. Security Features
+
+### 6.1 JWT Token Management
+```javascript
+const token = jwt.sign(
+    { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+);
+```
+
+### 6.2 Session Security
+- HttpOnly cookies
+- Secure in production
+- SameSite policy
+- Session expiration
+
+### 6.3 OAuth Security
+- State parameter validation
+- Proxy trust configuration
+- Secure callback URLs
+- Error handling
+
+## 7. Error Handling
+
+### 7.1 Common Error Responses
+
+1. Authentication Failed (401):
+```json
+{
+    "success": false,
+    "message": "Invalid credentials"
+}
+```
+
+2. Registration Error (400):
+```json
+{
+    "success": false,
+    "message": "Email already registered"
+}
+```
+
+3. Server Error (500):
+```json
+{
+    "success": false,
+    "message": "Internal server error"
+}
+```
+
+## 8. Server Configuration
+```javascript
+const PORT = 3001;
+app.listen(PORT, () => console.log(`User service running on port ${PORT}`));
+```
+
+## 9. Environment Variables Required
+```
+DB_HOST=localhost
+DB_USER=user
+DB_PASSWORD=password
+JWT_SECRET=your_jwt_secret
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=your_callback_url
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_CALLBACK_URL=your_callback_url
+```

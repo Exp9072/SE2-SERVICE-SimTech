@@ -1,0 +1,620 @@
+# Dokumentasi Product Service
+
+## 1. Gambaran Umum
+Product Service adalah microservice yang menangani manajemen produk dan inventory dalam sistem SimTech. Service ini menyediakan fungsionalitas untuk mengelola produk, stok, harga, dan melihat statistik inventory.
+
+## 2. Teknologi yang Digunakan
+
+### 2.1 Dependencies
+```javascript
+const express = require('express');        // Web framework
+const mysql = require('mysql2/promise');   // Database connector dengan promise
+const morgan = require('morgan');          // HTTP request logger
+```
+
+### 2.2 Konfigurasi Database
+```javascript
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+});
+```
+- Menggunakan connection pool untuk manajemen koneksi yang efisien
+- Konfigurasi diambil dari environment variables
+- Database yang digunakan: 'simtech'
+
+## 3. Authentication
+
+### 3.1 Admin Authentication Middleware
+```javascript
+async function authenticateAdmin(req, res, next) {
+    const userId = req.headers['user-id'];
+
+    try {
+        const [rows] = await db.query('SELECT role FROM users WHERE id = ?', [userId]);
+        if (rows[0].role !== 'admin') {
+            return res.status(403).json({ message: 'Forbidden: You do not have admin privileges.' });
+        }
+        next();
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+}
+```
+- Memverifikasi user-id di header
+- Mengecek role user di database
+- Hanya mengizinkan akses untuk admin
+
+## 4. API Endpoints
+
+### 4.1 Get All Products
+```http
+GET /api/products
+```
+
+**Deskripsi:**
+Endpoint ini digunakan untuk mendapatkan daftar semua produk yang tersedia di sistem. Endpoint ini dapat diakses oleh semua pengguna tanpa autentikasi, berguna untuk menampilkan katalog produk di halaman utama.
+
+**Fitur:**
+- Menampilkan semua produk dalam database
+- Tidak memerlukan autentikasi
+- Data diurutkan berdasarkan item_type dan item_name
+- Mengembalikan informasi lengkap termasuk stok dan harga
+
+**Implementasi:**
+```javascript
+app.get('/api/products', async (req, res) => {
+    try {
+        const [rows] = await db.query('SELECT * FROM items');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Menampilkan katalog produk di halaman utama
+2. Pencarian produk oleh pelanggan
+3. Pengecekan harga dan ketersediaan stok
+
+Response Success (200 OK):
+```json
+[
+    {
+        "item_id": 1,
+        "item_name": "Processor Intel i5",
+        "item_type": "processor",
+        "brand": "Intel",
+        "model": "i5-12400F",
+        "price": 2500000,
+        "stock_quantity": 10,
+        "image_url": "url/to/image",
+        "socket_type": "LGA1700",
+        "details": "6 Core 12 Thread"
+    }
+]
+```
+
+### 4.2 Get Product Detail
+```http
+GET /api/products/:id
+```
+
+**Deskripsi:**
+Endpoint ini mengambil detail lengkap dari satu produk spesifik berdasarkan ID. Berguna untuk menampilkan halaman detail produk dengan semua spesifikasi teknis.
+
+**Fitur:**
+- Mengambil detail lengkap satu produk
+- Tidak memerlukan autentikasi
+- Mencakup semua spesifikasi teknis
+- Validasi keberadaan produk
+
+**Parameter Path:**
+- `id` (number, required): ID unik produk
+
+**Implementasi:**
+```javascript
+app.get('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [rows] = await db.query(
+            'SELECT * FROM items WHERE item_id = ?', 
+            [id]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Menampilkan halaman detail produk
+2. Pengecekan spesifikasi teknis
+3. Verifikasi kompatibilitas komponen
+
+### 4.3 Update Product Stock
+```http
+PUT /api/products/:id/stock
+```
+
+**Deskripsi:**
+Endpoint ini digunakan untuk mengurangi stok produk saat terjadi pembelian. Memiliki mekanisme validasi untuk memastikan stok mencukupi sebelum pengurangan.
+
+**Fitur:**
+- Validasi ketersediaan stok
+- Atomic update untuk menghindari race condition
+- Pencatatan perubahan stok
+- Validasi input quantity
+
+**Parameter Path:**
+- `id` (number, required): ID produk yang akan diupdate
+
+**Request Body:**
+```json
+{
+    "quantity": 5  // Jumlah yang akan dikurangi
+}
+```
+
+**Implementasi:**
+```javascript
+app.put('/api/products/:id/stock', async (req, res) => {
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    if (!quantity || quantity <= 0) {
+        return res.status(400).json({ error: 'Invalid quantity' });
+    }
+
+    try {
+        // Check current stock
+        const [product] = await db.query(
+            'SELECT stock_quantity FROM items WHERE item_id = ?',
+            [id]
+        );
+
+        if (product[0].stock_quantity < quantity) {
+            return res.status(400).json({ error: 'Not enough stock' });
+        }
+
+        // Update stock
+        await db.query(
+            'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+            [quantity, id]
+        );
+
+        res.json({ message: 'Stock updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Pengurangan stok saat checkout
+2. Pembaruan stok setelah pembatalan pesanan
+3. Koreksi stok setelah retur barang
+
+### 4.4 Add New Product (Admin Only)
+```http
+POST /api/products
+```
+
+**Deskripsi:**
+Endpoint khusus admin untuk menambahkan produk baru ke sistem. Mencakup validasi data dan pengecekan kelengkapan informasi produk.
+
+**Fitur:**
+- Restricted access (admin only)
+- Validasi kelengkapan data
+- Pengecekan duplikasi produk
+- Pencatatan produk baru
+
+**Headers Required:**
+```
+user-id: string    // ID admin untuk autentikasi
+```
+
+**Request Body:**
+```json
+{
+    "item_name": "Processor Intel i5",
+    "item_type": "processor",
+    "brand": "Intel",
+    "model": "i5-12400F",
+    "price": 2500000,
+    "stock_quantity": 10,
+    "image_url": "url/to/image",
+    "socket_type": "LGA1700",
+    "ram_type": null,
+    "pci_version": null,
+    "min_watt": 65,
+    "details": "6 Core 12 Thread"
+}
+```
+
+**Validasi:**
+1. Nama produk tidak boleh duplikat
+2. Harga harus positif
+3. Stok awal harus >= 0
+4. Tipe produk harus valid
+5. Spesifikasi teknis sesuai tipe produk
+
+**Implementasi:**
+```javascript
+app.post('/api/products', authenticateAdmin, async (req, res) => {
+    const {
+        item_name, item_type, brand, model, price,
+        stock_quantity, image_url, socket_type,
+        ram_type, pci_version, min_watt, details
+    } = req.body;
+
+    try {
+        const [result] = await db.query(
+            `INSERT INTO items (
+                item_name, item_type, brand, model, price,
+                stock_quantity, image_url, socket_type,
+                ram_type, pci_version, min_watt, details
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                item_name, item_type, brand, model, price,
+                stock_quantity, image_url, socket_type,
+                ram_type, pci_version, min_watt, details
+            ]
+        );
+
+        res.status(201).json({
+            message: 'Product added successfully',
+            productId: result.insertId
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Penambahan produk baru ke katalog
+2. Update lini produk baru
+3. Penambahan varian produk
+
+### 4.5 Add Product Stock (Admin Only)
+```http
+PATCH /api/products/stock
+```
+
+**Deskripsi:**
+Endpoint untuk menambah stok produk existing. Digunakan saat ada pengiriman stok baru atau koreksi inventory.
+
+**Fitur:**
+- Restricted access (admin only)
+- Validasi jumlah stok
+- Tracking perubahan stok
+- Notifikasi stok rendah
+
+**Headers Required:**
+```
+user-id: string    // ID admin untuk autentikasi
+```
+
+**Request Body:**
+```json
+{
+    "item_name": "Processor Intel i5",
+    "stock": 5
+}
+```
+
+**Proses Bisnis:**
+1. Validasi keberadaan produk
+2. Pengecekan nilai stok baru
+3. Update stok di database
+4. Pencatatan history perubahan
+5. Pengecekan threshold stok rendah
+
+**Implementasi:**
+```javascript
+app.patch('/api/products/stock', authenticateAdmin, async (req, res) => {
+    const { item_name, stock } = req.body;
+
+    try {
+        // Get current stock
+        const [currentStock] = await db.query(
+            'SELECT stock_quantity FROM items WHERE item_name = ?',
+            [item_name]
+        );
+
+        if (currentStock.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        // Update stock
+        const [result] = await db.query(
+            'UPDATE items SET stock_quantity = stock_quantity + ? WHERE item_name = ?',
+            [stock, item_name]
+        );
+
+        res.json({
+            message: 'Stock updated successfully',
+            item_name: item_name,
+            previous_stock: currentStock[0].stock_quantity,
+            added_stock: stock,
+            new_stock: currentStock[0].stock_quantity + stock
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Penerimaan stok baru dari supplier
+2. Koreksi stok setelah stock opname
+3. Pengembalian stok dari pembatalan order
+
+### 4.6 Update Product Price (Admin Only)
+```http
+PATCH /api/products/price
+```
+
+**Deskripsi:**
+Endpoint untuk mengubah harga produk. Mencakup validasi harga dan pencatatan history perubahan harga.
+
+**Fitur:**
+- Restricted access (admin only)
+- Validasi harga baru
+- Pencatatan history harga
+- Notifikasi perubahan harga
+
+**Headers Required:**
+```
+user-id: string    // ID admin untuk autentikasi
+```
+
+**Request Body:**
+```json
+{
+    "item_name": "Processor Intel i5",
+    "price": 2400000
+}
+```
+
+**Validasi:**
+1. Harga baru harus positif
+2. Harga baru tidak boleh 0
+3. Perubahan harga dalam batas wajar
+
+**Implementasi:**
+```javascript
+app.patch('/api/products/price', authenticateAdmin, async (req, res) => {
+    const { item_name, price } = req.body;
+
+    try {
+        if (!price || price <= 0) {
+            return res.status(400).json({
+                error: 'Invalid price value. Price must be greater than 0.'
+            });
+        }
+
+        const [result] = await db.query(
+            'UPDATE items SET price = ? WHERE item_name = ?',
+            [price, item_name]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        res.json({
+            message: 'Price updated successfully',
+            item_name: item_name,
+            new_price: price
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+```
+
+**Use Cases:**
+1. Penyesuaian harga karena perubahan biaya
+2. Promosi atau diskon produk
+3. Penyesuaian harga kompetitor
+
+### 4.7 Get Inventory (Admin Only)
+```http
+GET /api/inventory
+```
+
+**Deskripsi:**
+Endpoint untuk melihat seluruh inventory dengan informasi detail. Digunakan untuk manajemen stok dan analisis inventory.
+
+**Fitur:**
+- Restricted access (admin only)
+- Detail lengkap semua produk
+- Informasi stok real-time
+- Sorting dan filtering
+
+**Headers Required:**
+```
+user-id: string    // ID admin untuk autentikasi
+```
+
+**Query yang Digunakan:**
+```sql
+SELECT 
+    item_id, item_name, item_type, brand, model,
+    stock_quantity, price, image_url, socket_type,
+    ram_type, pci_version, min_watt, details
+FROM items
+ORDER BY item_type, item_name
+```
+
+**Use Cases:**
+1. Stock opname
+2. Analisis inventory
+3. Perencanaan pembelian stok
+
+### 4.8 Get Inventory Statistics (Admin Only)
+```http
+GET /api/inventory/stats
+```
+
+**Deskripsi:**
+Endpoint untuk mendapatkan ringkasan statistik inventory. Memberikan overview cepat tentang status inventory.
+
+**Fitur:**
+- Restricted access (admin only)
+- Perhitungan real-time
+- Analisis stok rendah
+- Valuasi inventory
+
+**Kalkulasi:**
+1. Low Stock Count:
+   - Produk dengan stok < 5
+   - Indikator untuk restock
+
+2. Total Products:
+   - Jumlah SKU aktif
+   - Monitoring variasi produk
+
+3. Total Value:
+   - Nilai total inventory
+   - Perhitungan: sum(stock × price)
+
+**Use Cases:**
+1. Dashboard manajemen
+2. Laporan keuangan
+3. Perencanaan inventory
+
+### 4.9 Get Inventory History (Admin Only)
+```http
+GET /api/inventory/history
+```
+
+**Deskripsi:**
+Endpoint untuk melihat riwayat perubahan inventory. Mencakup semua transaksi yang mempengaruhi stok.
+
+**Fitur:**
+- Restricted access (admin only)
+- Tracking perubahan stok
+- Filter berdasarkan periode
+- Limit 50 transaksi terakhir
+
+**Data yang Ditampilkan:**
+1. Detail produk (ID, nama)
+2. Jumlah perubahan stok
+3. Tanggal transaksi
+4. Status order
+
+**Query Kompleks:**
+```sql
+SELECT 
+    i.item_id,
+    i.item_name,
+    oi.quantity,
+    o.order_date,
+    o.status
+FROM items i
+JOIN order_items oi ON i.item_id = oi.product_id
+JOIN orders o ON oi.order_id = o.order_id
+ORDER BY o.order_date DESC
+LIMIT 50
+```
+
+**Use Cases:**
+1. Audit inventory
+2. Analisis pola penjualan
+3. Investigasi discrepancy
+
+## 5. Error Handling
+
+### 5.1 Common Error Responses
+
+1. Not Found (404):
+```json
+{
+    "error": "Product not found"
+}
+```
+
+2. Invalid Input (400):
+```json
+{
+    "error": "Invalid quantity"
+}
+```
+
+3. Unauthorized (401):
+```json
+{
+    "message": "Unauthorized: User ID is missing."
+}
+```
+
+4. Forbidden (403):
+```json
+{
+    "message": "Forbidden: You do not have admin privileges."
+}
+```
+
+5. Server Error (500):
+```json
+{
+    "error": "Internal Server Error"
+}
+```
+
+## 6. Database Schema
+
+### 6.1 Table: items
+```sql
+CREATE TABLE items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    item_name VARCHAR(255) NOT NULL,
+    item_type VARCHAR(50) NOT NULL,
+    brand VARCHAR(100),
+    model VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL,
+    stock_quantity INT NOT NULL DEFAULT 0,
+    image_url TEXT,
+    socket_type VARCHAR(50),
+    ram_type VARCHAR(50),
+    pci_version VARCHAR(20),
+    min_watt INT,
+    details TEXT
+);
+```
+
+Fields:
+- `item_id`: Primary key
+- `item_name`: Nama produk
+- `item_type`: Tipe produk (processor, motherboard, dll)
+- `brand`: Merek produk
+- `model`: Model produk
+- `price`: Harga produk
+- `stock_quantity`: Jumlah stok
+- `image_url`: URL gambar produk
+- `socket_type`: Tipe socket (untuk processor/motherboard)
+- `ram_type`: Tipe RAM (untuk motherboard/RAM)
+- `pci_version`: Versi PCI (untuk motherboard/GPU)
+- `min_watt`: Kebutuhan daya minimum
+- `details`: Detail tambahan produk
+
+## 7. Server Configuration
+```javascript
+const PORT = 3002;
+app.listen(PORT, () => {
+    console.log(`Product service running on port ${PORT}`);
+});
+```
+- Port default: 3002
+- Menggunakan express server
+- Logging startup message

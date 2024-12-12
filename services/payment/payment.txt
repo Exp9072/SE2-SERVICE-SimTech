@@ -1,0 +1,438 @@
+# Dokumentasi Payment Service
+
+## 1. Gambaran Umum
+Payment Service adalah microservice yang menangani semua operasi terkait pembayaran dalam sistem SimTech. Service ini bertanggung jawab untuk memproses pembayaran, menyimpan riwayat transaksi, dan mengintegrasikan dengan RabbitMQ untuk komunikasi antar service.
+
+## 2. Teknologi yang Digunakan
+
+### 2.1 Dependencies
+```javascript
+const express = require('express');        // Web framework
+const bodyParser = require('body-parser'); // Parser untuk request body
+const mysql = require('mysql2/promise');   // Database connector dengan promise
+const morgan = require('morgan');          // HTTP request logger
+const amqp = require('amqplib');          // RabbitMQ client
+```
+
+### 2.2 Konfigurasi Database
+```javascript
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+});
+```
+- Menggunakan connection pool untuk manajemen koneksi yang efisien
+- Konfigurasi diambil dari environment variables
+- Database yang digunakan: 'simtech'
+
+## 3. Error Handling
+
+### 3.1 Global Error Handlers
+```javascript
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled rejection:', reason, 'at', promise);
+});
+```
+- Menangkap error yang tidak tertangani di level proses
+- Mencegah crash tanpa logging
+- Memastikan semua error tercatat sebelum proses exit
+
+## 4. Authentication
+
+### 4.1 Middleware Autentikasi
+```javascript
+async function authenticateUser(req, res, next) {
+    const userId = req.headers['user-id'];
+    
+    // Validasi user-id
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized: User ID is missing.' });
+    }
+
+    try {
+        // Verifikasi user di database
+        const [rows] = await db.query('SELECT email FROM users WHERE id = ?', [userId]);
+        if (rows.length === 0) {
+            return res.status(401).json({ message: 'Unauthorized: User not found.' });
+        }
+
+        req.userEmail = rows[0].email;
+        next();
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+}
+```
+- Memverifikasi keberadaan user-id di header
+- Mengecek validitas user di database
+- Menyimpan email user di request object untuk penggunaan selanjutnya
+
+## 5. RabbitMQ Integration
+
+### 5.1 Koneksi RabbitMQ
+```javascript
+const connectRabbitMQ = async () => {
+    let retries = 5;
+    while (retries) {
+        try {
+            const connection = await amqp.connect(process.env.RABBITMQ_HOST);
+            channel = await connection.createChannel();
+            return channel;
+        } catch (error) {
+            retries--;
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+    process.exit(1);
+};
+```
+- Implementasi retry mechanism dengan 5 percobaan
+- Interval retry: 5 detik
+- Exit process jika gagal setelah 5 percobaan
+
+### 5.2 Channel Management
+```javascript
+const getRabbitChannel = () => {
+    if (!channel) {
+        throw new Error('RabbitMQ channel is not initialized');
+    }
+    return channel;
+};
+```
+- Singleton pattern untuk channel management
+- Validasi inisialisasi channel
+
+## 6. API Endpoints
+
+### 6.1 Proses Pembayaran (Create Payment)
+```http
+POST /api/payments
+```
+
+#### Headers yang Diperlukan:
+```
+user-id: string     // ID pengguna untuk autentikasi
+user-email: string  // Email pengguna untuk verifikasi
+```
+
+#### Request Body:
+```json
+{
+    "orderId": 123,          // ID pesanan yang akan dibayar
+    "paymentMethod": "bank"  // Metode pembayaran yang dipilih
+}
+```
+
+#### Success Response (201 Created):
+```json
+{
+    "message": "Pembayaran berhasil",
+    "payment_id": 456        // ID pembayaran yang baru dibuat
+}
+```
+
+#### Error Responses:
+1. Invalid Request (400 Bad Request):
+```json
+{
+    "message": "Order ID dan metode pembayaran diperlukan",
+    "received": {
+        // Data yang diterima
+    },
+    "expected": {
+        "orderId": "number",
+        "paymentMethod": "string"
+    }
+}
+```
+
+2. Order Not Found (404 Not Found):
+```json
+{
+    "message": "Pesanan tidak ditemukan atau sudah dibayar"
+}
+```
+
+3. Server Error (500 Internal Server Error):
+```json
+{
+    "message": "Gagal memproses pembayaran"
+}
+```
+
+#### Proses Detail:
+1. Validasi Input:
+   - Memastikan orderId dan paymentMethod ada
+   - Memastikan format data sesuai
+   - Validasi header user-id dan user-email
+
+2. Validasi Pesanan:
+   ```sql
+   SELECT order_id, total_price 
+   FROM orders 
+   WHERE order_id = ? AND payment = 'unpaid'
+   ```
+   - Mengecek keberadaan pesanan
+   - Memastikan pesanan belum dibayar
+   - Mengambil total harga pesanan
+
+3. Pencatatan Pembayaran:
+   ```sql
+   INSERT INTO payments (
+       order_id, 
+       payment_method, 
+       payment_date, 
+       email, 
+       amount
+   ) VALUES (?, ?, NOW(), ?, ?)
+   ```
+   - Menyimpan detail pembayaran
+   - Menggunakan timestamp server
+   - Menyimpan email untuk tracking
+
+4. Update Status Pesanan:
+   ```sql
+   UPDATE orders 
+   SET payment = 'paid' 
+   WHERE order_id = ?
+   ```
+   - Mengubah status pembayaran pesanan
+   - Menggunakan transaksi database
+
+### 6.2 Detail Pembayaran (Get Payment Details)
+```http
+GET /api/payments/:orderId
+```
+
+#### Headers yang Diperlukan:
+```
+user-email: string  // Email pengguna untuk verifikasi kepemilikan
+```
+
+#### Parameters URL:
+```
+orderId: number     // ID pesanan yang ingin dilihat detailnya
+```
+
+#### Success Response (200 OK):
+```json
+{
+    "payment_id": 456,
+    "order_id": 123,
+    "email": "user@example.com",
+    "payment_method": "bank",
+    "payment_date": "2024-03-15T08:30:00Z",
+    "amount": 1500000
+}
+```
+
+#### Error Responses:
+1. Unauthorized (401 Unauthorized):
+```json
+{
+    "message": "Unauthorized: Missing email in headers."
+}
+```
+
+2. Not Found (404 Not Found):
+```json
+{
+    "message": "Detail pembayaran tidak ditemukan."
+}
+```
+
+3. Server Error (500 Internal Server Error):
+```json
+{
+    "message": "Terjadi kesalahan saat mengambil detail pembayaran."
+}
+```
+
+#### Query Database:
+```sql
+SELECT 
+    payment_id, 
+    order_id, 
+    email, 
+    payment_method, 
+    payment_date, 
+    amount
+FROM payments
+WHERE order_id = ? AND email = ?
+```
+
+#### Proses Detail:
+1. Validasi Header:
+   - Memastikan user-email ada
+   - Format email valid
+
+2. Pengambilan Data:
+   - Query dengan parameter orderId dan email
+   - Join dengan tabel orders jika diperlukan
+   - Format amount ke tipe float
+
+3. Format Response:
+   - Konversi date ke ISO string
+   - Parse amount ke float
+   - Sanitasi data sensitif
+
+### 6.3 Pembatalan Pembayaran (Cancel Payment)
+```http
+POST /api/payments/cancel/:orderId
+```
+
+#### Headers yang Diperlukan:
+```
+user-email: string  // Email pengguna untuk verifikasi kepemilikan
+```
+
+#### Parameters URL:
+```
+orderId: number     // ID pesanan yang akan dibatalkan
+```
+
+#### Success Response (200 OK):
+```json
+{
+    "message": "Pembayaran dibatalkan dan stok berhasil dikembalikan."
+}
+```
+
+#### Error Responses:
+1. Bad Request (400 Bad Request):
+```json
+{
+    "message": "Order ID dan email diperlukan."
+}
+```
+
+2. Not Found (404 Not Found):
+```json
+{
+    "message": "Pesanan tidak ditemukan atau sudah diproses."
+}
+```
+
+3. Server Error (500 Internal Server Error):
+```json
+{
+    "message": "Terjadi kesalahan saat membatalkan pembayaran.",
+    "error": "Detail error message"
+}
+```
+
+#### Proses Detail:
+1. Validasi Pesanan:
+   ```sql
+   SELECT * FROM orders 
+   WHERE order_id = ? 
+   AND email = ? 
+   AND payment = 'unpaid'
+   ```
+   - Memastikan pesanan ada
+   - Memastikan kepemilikan pesanan
+   - Memastikan status masih unpaid
+
+2. Pengambilan Item Pesanan:
+   ```sql
+   SELECT product_id, quantity 
+   FROM order_items 
+   WHERE order_id = ?
+   ```
+   - Mendapatkan daftar item untuk pengembalian stok
+
+3. Pengembalian Stok:
+   ```sql
+   UPDATE items 
+   SET stock_quantity = stock_quantity + ? 
+   WHERE item_id = ?
+   ```
+   - Mengembalikan stok untuk setiap item
+   - Menggunakan transaksi database
+
+4. Penghapusan Data:
+   ```sql
+   DELETE FROM payments WHERE order_id = ?;
+   DELETE FROM order_items WHERE order_id = ?;
+   DELETE FROM orders WHERE order_id = ?;
+   ```
+   - Menghapus semua data terkait pesanan
+   - Menggunakan transaksi database
+   - Urutan penghapusan sesuai foreign key constraints
+
+### 6.4 RabbitMQ Test Endpoints
+
+#### Test Connection
+```http
+GET /api/rabbitmq-test
+```
+
+Success Response (200 OK):
+```json
+{
+    "message": "Message sent to test_queue."
+}
+```
+
+#### Alternative Test
+```http
+GET /test-rabbit
+```
+
+Success Response (200 OK):
+```json
+{
+    "message": "Pesan berhasil dikirim ke RabbitMQ."
+}
+```
+
+Error Response (500 Internal Server Error):
+```json
+{
+    "message": "RabbitMQ test failed.",
+    "error": "Detail error message"
+}
+```
+
+#### Proses RabbitMQ:
+1. Channel Assertion:
+   ```javascript
+   await channel.assertQueue('test_queue');
+   ```
+
+2. Message Sending:
+   ```javascript
+   channel.sendToQueue('test_queue', Buffer.from('Test message'));
+   ```
+
+3. Error Handling:
+   - Connection errors
+   - Channel errors
+   - Queue assertion errors
+
+## 7. Testing Endpoints
+
+### 7.1 RabbitMQ Test
+```http
+GET /api/rabbitmq-test
+GET /test-rabbit
+```
+- Endpoint untuk testing koneksi RabbitMQ
+- Mengirim pesan test ke queue 'test_queue'
+- Berguna untuk debugging dan health check
+
+## 8. Server Configuration
+```javascript
+const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;
+app.listen(PORT, '0.0.0.0', () => console.log(`Payment service running on port ${PORT}`));
+```
+- Port default: 3004
+- Binding ke semua network interfaces ('0.0.0.0')
+- Port dapat dikonfigurasi melalui environment variable

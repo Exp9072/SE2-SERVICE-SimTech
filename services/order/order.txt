@@ -1,0 +1,866 @@
+# Dokumentasi Order Service SimTech
+
+## 1. Pengenalan
+
+Order Service adalah komponen kritis yang menangani semua operasi terkait pesanan dalam sistem SimTech. Service ini bertanggung jawab untuk:
+
+1. Manajemen Pesanan:
+   - Pembuatan pesanan baru
+   - Tracking status pesanan
+   - Pengelolaan item pesanan
+   - Perhitungan total harga
+
+2. Integrasi dengan Service Lain:
+   - User Service: Validasi pengguna
+   - Product Service: Cek stok dan harga
+   - Payment Service: Status pembayaran
+   - RabbitMQ: Komunikasi asynchronous
+
+3. Keamanan dan Validasi:
+   - Autentikasi pengguna
+   - Validasi stok
+   - Konsistensi data
+   - Transaksi database
+
+## 2. Arsitektur dan Komponen
+
+### 2.1 Database Schema
+1. Tabel Orders:
+   ```sql
+   CREATE TABLE orders (
+     order_id INT PRIMARY KEY AUTO_INCREMENT,
+     email VARCHAR(255) NOT NULL,
+     order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+     total_price DECIMAL(10,2) DEFAULT 0,
+     payment ENUM('paid', 'unpaid') DEFAULT 'unpaid',
+     status ENUM('belum dikirim', 'sedang dikirim', 'sudah dikirim') DEFAULT 'belum dikirim'
+   );
+   ```
+
+2. Tabel Order Items:
+   ```sql
+   CREATE TABLE order_items (
+     item_id INT PRIMARY KEY AUTO_INCREMENT,
+     order_id INT,
+     product_id INT,
+     quantity INT,
+     price DECIMAL(10,2),
+     FOREIGN KEY (order_id) REFERENCES orders(order_id)
+   );
+   ```
+
+### 2.2 Koneksi Database
+```javascript
+const db = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+```
+
+### 2.3 RabbitMQ Setup
+```javascript
+const connectRabbitMQ = async () => {
+    let retries = 5;
+    while (retries) {
+        try {
+            const connection = await amqp.connect(process.env.RABBITMQ_HOST);
+            const channel = await connection.createChannel();
+            await channel.assertQueue('order_status');
+            await channel.assertQueue('payment_status');
+            return channel;
+        } catch (error) {
+            retries--;
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+    throw new Error('Failed to connect to RabbitMQ');
+};
+```
+
+## 3. Proses Bisnis Utama
+
+### 3.1 Pembuatan Pesanan
+1. Flow Proses:
+   ```javascript
+   const createOrder = async (userId, cartItems) => {
+     // Start transaction
+     await db.query('START TRANSACTION');
+     
+     try {
+       // 1. Validasi stok
+       for (const item of cartItems) {
+         const [stock] = await db.query(
+           'SELECT stock_quantity FROM items WHERE item_id = ? FOR UPDATE',
+           [item.product_id]
+         );
+         if (stock[0].stock_quantity < item.quantity) {
+           throw new Error('Stok tidak mencukupi');
+         }
+       }
+
+       // 2. Buat pesanan
+       const [orderResult] = await db.query(
+         'INSERT INTO orders (email, order_date) VALUES (?, NOW())',
+         [userEmail]
+       );
+       const orderId = orderResult.insertId;
+
+       // 3. Tambah items dan update stok
+       let totalPrice = 0;
+       for (const item of cartItems) {
+         const [priceResult] = await db.query(
+           'SELECT price FROM items WHERE item_id = ?',
+           [item.product_id]
+         );
+         const itemPrice = priceResult[0].price * item.quantity;
+         totalPrice += itemPrice;
+
+         // Insert item
+         await db.query(
+           'INSERT INTO order_items VALUES (?, ?, ?, ?)',
+           [orderId, item.product_id, item.quantity, itemPrice]
+         );
+
+         // Update stock
+         await db.query(
+           'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+           [item.quantity, item.product_id]
+         );
+       }
+
+       // 4. Update total price
+       await db.query(
+         'UPDATE orders SET total_price = ? WHERE order_id = ?',
+         [totalPrice, orderId]
+       );
+
+       // 5. Commit transaction
+       await db.query('COMMIT');
+
+       // 6. Send notification
+       await sendOrderCreatedNotification(orderId, userEmail, totalPrice);
+
+       return {
+         success: true,
+         orderId,
+         totalPrice
+       };
+     } catch (error) {
+       await db.query('ROLLBACK');
+       throw error;
+     }
+   };
+   ```
+
+2. Validasi dan Error Handling:
+   ```javascript
+   const validateOrderItems = (items) => {
+     if (!items || !Array.isArray(items) || items.length === 0) {
+       throw new Error('Invalid items format');
+     }
+
+     items.forEach(item => {
+       if (!item.product_id || !item.quantity) {
+         throw new Error('Missing required item fields');
+       }
+       if (item.quantity <= 0) {
+         throw new Error('Invalid quantity');
+       }
+     });
+   };
+   ```
+
+### 3.2 Manajemen Status Pesanan
+1. Update Status:
+   ```javascript
+   const updateOrderStatus = async (orderId, newStatus) => {
+     // Validate status
+     const validStatuses = ['belum dikirim', 'sedang dikirim', 'sudah dikirim'];
+     if (!validStatuses.includes(newStatus)) {
+       throw new Error('Status tidak valid');
+     }
+
+     // Update in database
+     await db.query(
+       'UPDATE orders SET status = ? WHERE order_id = ?',
+       [newStatus, orderId]
+     );
+
+     // Send notification
+     await sendOrderStatusNotification(orderId, newStatus);
+   };
+   ```
+
+2. Status Flow:
+   ```javascript
+   const ORDER_STATUS_FLOW = {
+     'belum dikirim': ['sedang dikirim'],
+     'sedang dikirim': ['sudah dikirim'],
+     'sudah dikirim': []
+   };
+
+   const validateStatusTransition = (currentStatus, newStatus) => {
+     const allowedTransitions = ORDER_STATUS_FLOW[currentStatus];
+     if (!allowedTransitions.includes(newStatus)) {
+       throw new Error('Invalid status transition');
+     }
+   };
+   ```
+
+### 3.3 Integrasi RabbitMQ
+1. Message Publishers:
+   ```javascript
+   const publishOrderEvent = async (channel, queue, message) => {
+     try {
+       await channel.assertQueue(queue);
+       channel.sendToQueue(queue, Buffer.from(JSON.stringify(message)));
+       console.log(`Event published to ${queue}:`, message);
+     } catch (error) {
+       console.error(`Failed to publish to ${queue}:`, error);
+       throw error;
+     }
+   };
+   ```
+
+2. Message Consumers:
+   ```javascript
+   const setupOrderConsumers = async (channel) => {
+     // Payment status consumer
+     await channel.assertQueue('payment_status');
+     channel.consume('payment_status', async (msg) => {
+       try {
+         const data = JSON.parse(msg.content.toString());
+         await updateOrderPaymentStatus(data.orderId, data.status);
+         channel.ack(msg);
+       } catch (error) {
+         channel.nack(msg);
+       }
+     });
+
+     // Order status consumer
+     await channel.assertQueue('order_status');
+     channel.consume('order_status', async (msg) => {
+       try {
+         const data = JSON.parse(msg.content.toString());
+         await handleOrderStatusChange(data);
+         channel.ack(msg);
+       } catch (error) {
+         channel.nack(msg);
+       }
+     });
+   };
+   ```
+
+## 4. API Endpoints
+
+### 4.1 Pembuatan Pesanan (Order Creation)
+
+1. Create New Order
+   ```http
+   POST /api/orders
+   Authorization: Bearer {jwt_token}
+   Content-Type: application/json
+   user-id: {user_id}
+   user-email: {user_email}
+   ```
+
+   Request Body:
+   ```json
+   {
+     "cart_items": [
+       {
+         "product_id": 1,
+         "quantity": 2
+       },
+       {
+         "product_id": 3,
+         "quantity": 1
+       }
+     ]
+   }
+   ```
+
+   Response Success (201):
+   ```json
+   {
+     "success": true,
+     "orderId": 123,
+     "totalPrice": 1500000,
+     "message": "Pesanan berhasil dibuat"
+   }
+   ```
+
+   Response Error (400):
+   ```json
+   {
+     "success": false,
+     "message": "Stok tidak mencukupi untuk product_id: 1"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi (JWT Token)
+   - Memerlukan header user-id dan user-email
+   - Validasi stok dilakukan untuk setiap item
+   - Menggunakan transaksi database
+   - Mengirim notifikasi via RabbitMQ setelah order dibuat
+
+2. Add to Cart
+   ```http
+   POST /api/orders/cart
+   Authorization: Bearer {jwt_token}
+   Content-Type: application/json
+   user-id: {user_id}
+   ```
+
+   Request Body:
+   ```json
+   {
+     "items": [
+       {
+         "id": 1,
+         "price": 750000
+       }
+     ]
+   }
+   ```
+
+   Response Success (201):
+   ```json
+   {
+     "success": true,
+     "orderId": 124,
+     "totalPrice": 750000,
+     "message": "Barang berhasil ditambahkan ke keranjang"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi
+   - Status pesanan diset sebagai "cart"
+   - Tidak mengurangi stok sampai checkout
+   - Harga disimpan saat item ditambahkan
+
+### 4.2 Manajemen Pesanan (Order Management)
+
+1. Get Order List
+   ```http
+   GET /api/orders
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   user-email: {user_email}
+   ```
+
+   Query Parameters:
+   - status (optional): Filter by status
+   - limit (optional): Limit results (default: 10)
+   - page (optional): Page number (default: 1)
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "orders": [
+         {
+           "order_id": 123,
+           "email": "user@example.com",
+           "order_date": "2023-12-20T10:00:00Z",
+           "total_price": 1500000,
+           "payment": "unpaid",
+           "status": "belum dikirim"
+         }
+       ],
+       "pagination": {
+         "total": 50,
+         "page": 1,
+         "limit": 10
+       }
+     }
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi
+   - Menampilkan hanya pesanan milik user tersebut
+   - Mendukung pagination
+   - Diurutkan dari pesanan terbaru
+
+2. Get Order Details
+   ```http
+   GET /api/orders/{orderId}
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "order_id": 123,
+       "email": "user@example.com",
+       "order_date": "2023-12-20T10:00:00Z",
+       "total_price": 1500000,
+       "payment": "unpaid",
+       "status": "belum dikirim",
+       "items": [
+         {
+           "product_id": 1,
+           "item_name": "Processor Intel i5",
+           "quantity": 2,
+           "price": 750000,
+           "subtotal": 1500000
+         }
+       ]
+     }
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi
+   - Validasi kepemilikan order
+   - Includes detailed item information
+   - Calculates subtotals
+
+3. Get Order Items
+   ```http
+   GET /api/orders/{orderId}/items
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "items": [
+         {
+           "product_id": 1,
+           "name": "Processor Intel i5",
+           "quantity": 2,
+           "price": 750000,
+           "subtotal": 1500000
+         }
+       ]
+     }
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi
+   - Fokus pada item details
+   - Optimized query untuk performa
+
+### 4.3 Admin Endpoints
+
+1. Update Order Status
+   ```http
+   PATCH /api/orders/{orderId}/status
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   Content-Type: application/json
+   ```
+
+   Request Body:
+   ```json
+   {
+     "status": "sedang dikirim"
+   }
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "message": "Status pesanan berhasil diupdate"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi admin
+   - Validasi status transition
+   - Mengirim notifikasi ke user
+   - Mencatat dalam order history
+
+2. Delete Unpaid Order
+   ```http
+   DELETE /api/orders/{orderId}
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "message": "Pesanan berhasil dihapus"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi admin
+   - Hanya untuk unpaid orders
+   - Mengembalikan stok items
+   - Menggunakan database transaction
+
+3. Get All Orders (Admin)
+   ```http
+   GET /api/admin/orders
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   ```
+
+   Query Parameters:
+   - status: Filter by status
+   - payment: Filter by payment status
+   - startDate: Filter by date range start
+   - endDate: Filter by date range end
+   - limit: Results per page
+   - page: Page number
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "orders": [
+         {
+           "order_id": 123,
+           "email": "user@example.com",
+           "order_date": "2023-12-20T10:00:00Z",
+           "total_price": 1500000,
+           "payment": "unpaid",
+           "status": "belum dikirim",
+           "items_count": 2
+         }
+       ],
+       "pagination": {
+         "total": 100,
+         "page": 1,
+         "limit": 10
+       },
+       "summary": {
+         "total_orders": 100,
+         "total_revenue": 15000000,
+         "pending_orders": 25
+       }
+     }
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi admin
+   - Advanced filtering options
+   - Includes summary statistics
+   - Optimized untuk large datasets
+
+4. Get Order Statistics
+   ```http
+   GET /api/admin/orders/statistics
+   Authorization: Bearer {jwt_token}
+   user-id: {user_id}
+   ```
+
+   Query Parameters:
+   - period: daily | weekly | monthly
+   - startDate: Start of period
+   - endDate: End of period
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "data": {
+       "period": "monthly",
+       "statistics": [
+         {
+           "date": "2023-12",
+           "orders_count": 150,
+           "total_revenue": 225000000,
+           "average_order_value": 1500000,
+           "status_breakdown": {
+             "belum_dikirim": 50,
+             "sedang_dikirim": 75,
+             "sudah_dikirim": 25
+           }
+         }
+       ],
+       "trends": {
+         "growth_rate": 15.5,
+         "popular_products": [
+           {
+             "product_id": 1,
+             "name": "Processor Intel i5",
+             "order_count": 45
+           }
+         ]
+       }
+     }
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan autentikasi admin
+   - Aggregated statistics
+   - Trend analysis
+   - Cached results (5 menit)
+
+### 4.4 Webhook Endpoints
+
+1. Payment Webhook
+   ```http
+   POST /api/orders/payment-webhook
+   X-Webhook-Secret: {webhook_secret}
+   Content-Type: application/json
+   ```
+
+   Request Body:
+   ```json
+   {
+     "order_id": 123,
+     "payment_status": "paid",
+     "payment_method": "bank_transfer",
+     "amount": 1500000,
+     "transaction_id": "TRX123456"
+   }
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "message": "Payment status updated"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan webhook secret
+   - Idempotent operation
+   - Updates order payment status
+   - Triggers order status update
+   - Sends notification to user
+
+2. Shipping Webhook
+   ```http
+   POST /api/orders/shipping-webhook
+   X-Webhook-Secret: {webhook_secret}
+   Content-Type: application/json
+   ```
+
+   Request Body:
+   ```json
+   {
+     "order_id": 123,
+     "tracking_number": "SHIP123456",
+     "courier": "JNE",
+     "status": "delivered",
+     "timestamp": "2023-12-20T15:30:00Z"
+   }
+   ```
+
+   Response Success (200):
+   ```json
+   {
+     "success": true,
+     "message": "Shipping status updated"
+   }
+   ```
+
+   Keterangan:
+   - Memerlukan webhook secret
+   - Updates shipping status
+   - Sends notification to user
+   - Updates order status if delivered
+
+## 5. Error Handling
+
+### 5.1 Custom Error Classes
+```javascript
+class OrderError extends Error {
+    constructor(message, code) {
+        super(message);
+        this.name = 'OrderError';
+        this.code = code;
+    }
+}
+
+class StockError extends OrderError {
+    constructor(message) {
+        super(message, 'STOCK_ERROR');
+    }
+}
+
+class ValidationError extends OrderError {
+    constructor(message) {
+        super(message, 'VALIDATION_ERROR');
+    }
+}
+```
+
+### 5.2 Error Middleware
+```javascript
+const errorHandler = (err, req, res, next) => {
+    console.error('Error:', err);
+
+    if (err instanceof OrderError) {
+        return res.status(400).json({
+            success: false,
+            error: {
+                code: err.code,
+                message: err.message
+            }
+        });
+    }
+
+    if (err.code === 'ER_NO_SUCH_TABLE') {
+        return res.status(500).json({
+            success: false,
+            error: {
+                code: 'DATABASE_ERROR',
+                message: 'Database table not found'
+            }
+        });
+    }
+
+    res.status(500).json({
+        success: false,
+        error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Internal server error'
+        }
+    });
+};
+
+app.use(errorHandler);
+```
+
+## 6. Monitoring dan Logging
+
+### 6.1 Request Logging
+```javascript
+const requestLogger = (req, res, next) => {
+    const start = process.hrtime();
+    
+    res.on('finish', () => {
+        const [seconds, nanoseconds] = process.hrtime(start);
+        const duration = seconds * 1000 + nanoseconds / 1000000;
+        
+        console.log({
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            duration: `${duration.toFixed(2)}ms`,
+            userId: req.headers['user-id'] || 'anonymous'
+        });
+    });
+    
+    next();
+};
+```
+
+### 6.2 Transaction Logging
+```javascript
+const logTransaction = async (orderId, action, details) => {
+    await db.query(
+        'INSERT INTO order_logs (order_id, action, details, timestamp) VALUES (?, ?, ?, NOW())',
+        [orderId, action, JSON.stringify(details)]
+    );
+};
+```
+
+## 7. Performance Optimization
+
+### 7.1 Database Indexing
+```sql
+CREATE INDEX idx_email ON orders(email);
+CREATE INDEX idx_status ON orders(status);
+CREATE INDEX idx_order_date ON orders(order_date);
+CREATE INDEX idx_order_items ON order_items(order_id, product_id);
+```
+
+### 7.2 Query Optimization
+```javascript
+const getOrdersWithItems = async (userId) => {
+    const [orders] = await db.query(`
+        SELECT 
+            o.*,
+            JSON_ARRAYAGG(
+                JSON_OBJECT(
+                    'product_id', oi.product_id,
+                    'quantity', oi.quantity,
+                    'price', oi.price
+                )
+            ) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.order_id = oi.order_id
+        WHERE o.email = ?
+        GROUP BY o.order_id
+        ORDER BY o.order_date DESC
+    `, [userId]);
+    
+    return orders;
+};
+```
+
+## 8. Security Measures
+
+### 8.1 Input Validation
+```javascript
+const sanitizeOrderInput = (input) => {
+    const sanitized = {};
+    
+    if (input.email) {
+        sanitized.email = input.email.toLowerCase().trim();
+    }
+    
+    if (input.items) {
+        sanitized.items = input.items.map(item => ({
+            product_id: parseInt(item.product_id),
+            quantity: parseInt(item.quantity)
+        }));
+    }
+    
+    return sanitized;
+};
+```
+
+### 8.2 Authentication Middleware
+```javascript
+const authenticateUser = async (req, res, next) => {
+    const userId = req.headers['user-id'];
+    const userEmail = req.headers['user-email'];
+
+    if (!userId || !userEmail) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required'
+        });
+    }
+
+    try {
+        const [user] = await db.query(
+            'SELECT email FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (user.length === 0 || user[0].email !== userEmail) {
+            throw new Error('Invalid user');
+        }
+
+        req.user = { id: userId, email: userEmail };
+        next();
+    } catch (error) {
+        res.status(401).json({
+            success: false,
+            message: 'Invalid authentication'
+        });
+    }
+};
+```

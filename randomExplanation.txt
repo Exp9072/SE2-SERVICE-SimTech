@@ -1,0 +1,263 @@
+# Penjelasan Teknologi dalam SimTech
+
+## 1. HTTPS dan SSL di Node.js
+
+### 1.1 Apa itu HTTPS?
+HTTPS (Hypertext Transfer Protocol Secure) adalah protokol HTTP yang dienkripsi menggunakan SSL/TLS untuk mengamankan komunikasi antara client dan server.
+
+### 1.2 Implementasi di Node.js
+```javascript
+const https = require('https');
+const fs = require('fs');
+
+const options = {
+    key: fs.readFileSync('private-key.pem'),
+    cert: fs.readFileSync('certificate.pem')
+};
+
+https.createServer(options, app).listen(443, () => {
+    console.log('HTTPS server running on port 443');
+});
+```
+
+### 1.3 Cara Kerja SSL/TLS
+1. **Handshake Process:**
+   - Client mengirim "Client Hello"
+   - Server membalas dengan sertifikat
+   - Client memverifikasi sertifikat
+   - Pertukaran kunci enkripsi
+   - Komunikasi terenkripsi dimulai
+
+2. **Enkripsi Data:**
+   - Menggunakan enkripsi asimetrik untuk handshake
+   - Menggunakan enkripsi simetrik untuk komunikasi data
+   - Setiap sesi menggunakan kunci unik
+
+3. **Sertifikat SSL:**
+   - Berisi informasi domain
+   - Public key server
+   - Ditandatangani oleh CA (Certificate Authority)
+   - Memvalidasi identitas server
+
+## 2. Docker dan Containerization
+
+### 2.1 Apa itu Docker?
+Docker adalah platform untuk mengembangkan, mengirim, dan menjalankan aplikasi dalam container. Container adalah unit standar perangkat lunak yang mengemas kode dan semua dependensinya.
+
+### 2.2 Komponen Utama Docker
+1. **Dockerfile:**
+   ```dockerfile
+   FROM node:14
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm install
+   COPY . .
+   EXPOSE 3000
+   CMD ["npm", "start"]
+   ```
+
+2. **Docker Image:**
+   - Template read-only untuk membuat container
+   - Berisi sistem operasi, runtime, aplikasi, dll
+   - Bisa di-share dan digunakan kembali
+
+3. **Docker Container:**
+   - Instance yang berjalan dari image
+   - Isolated environment
+   - Memiliki filesystem, network, dan resources sendiri
+
+### 2.3 Docker Compose
+```yaml
+version: '3'
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+```
+
+### 2.4 Keuntungan Docker
+1. **Konsistensi Environment:**
+   - "Works on my machine" problem solved
+   - Sama persis di development dan production
+   - Mudah di-reproduce
+
+2. **Isolasi:**
+   - Aplikasi berjalan terpisah
+   - Tidak konflik dengan aplikasi lain
+   - Security lebih terjamin
+
+3. **Skalabilitas:**
+   - Mudah di-scale horizontal
+   - Load balancing sederhana
+   - Orchestration dengan Kubernetes
+
+## 3. RabbitMQ Message Broker
+
+### 3.1 Apa itu RabbitMQ?
+RabbitMQ adalah message broker yang menerima dan meneruskan pesan. Berguna untuk komunikasi asynchronous antar service.
+
+### 3.2 Konsep Dasar
+1. **Producer:**
+   ```javascript
+   const channel = await connection.createChannel();
+   await channel.assertQueue('order_queue');
+   channel.sendToQueue('order_queue', Buffer.from(JSON.stringify({
+       orderId: 123,
+       status: 'created'
+   })));
+   ```
+
+2. **Consumer:**
+   ```javascript
+   const channel = await connection.createChannel();
+   await channel.assertQueue('order_queue');
+   channel.consume('order_queue', (msg) => {
+       const order = JSON.parse(msg.content);
+       processOrder(order);
+       channel.ack(msg);
+   });
+   ```
+
+### 3.3 Exchange Types
+1. **Direct Exchange:**
+   - Routing berdasarkan exact match
+   - Cocok untuk specific routing
+
+2. **Topic Exchange:**
+   - Routing berdasarkan pattern matching
+   - Flexible routing dengan wildcards
+
+3. **Fanout Exchange:**
+   - Broadcast ke semua queue
+   - Cocok untuk pub/sub
+
+### 3.4 Use Cases di SimTech
+1. **Order Processing:**
+   - Notifikasi order baru
+   - Update status order
+   - Sinkronisasi inventory
+
+2. **Inventory Updates:**
+   - Update stok real-time
+   - Notifikasi stok rendah
+   - Sinkronisasi harga
+
+3. **User Notifications:**
+   - Email notifications
+   - Status updates
+   - System alerts
+
+## 4. Microservices Architecture
+
+### 4.1 Service Breakdown
+1. **User Service (Port 3001):**
+   - Authentication
+   - User management
+   - Profile handling
+
+2. **Product Service (Port 3002):**
+   - Inventory management
+   - Product catalog
+   - Stock tracking
+
+3. **Order Service (Port 3003):**
+   - Order processing
+   - Cart management
+   - Order history
+
+4. **Payment Service (Port 3004):**
+   - Payment processing
+   - Transaction records
+   - Payment status
+
+### 4.2 Inter-Service Communication
+1. **Synchronous (REST):**
+   - Direct API calls
+   - Real-time responses
+   - Strong consistency
+
+2. **Asynchronous (RabbitMQ):**
+   - Message queuing
+   - Event-driven
+   - Eventual consistency
+
+### 4.3 Gateway Service
+1. **Routing:**
+   - API gateway pattern
+   - Request forwarding
+   - Load balancing
+
+2. **Security:**
+   - Authentication
+   - Rate limiting
+   - Request validation
+
+## 5. Database Design
+
+### 5.1 MySQL Structure
+1. **Users Table:**
+   ```sql
+   CREATE TABLE users (
+       id INT PRIMARY KEY,
+       email VARCHAR(255),
+       role ENUM('user', 'admin')
+   );
+   ```
+
+2. **Products Table:**
+   ```sql
+   CREATE TABLE items (
+       item_id INT PRIMARY KEY,
+       name VARCHAR(255),
+       stock INT
+   );
+   ```
+
+### 5.2 Connection Pooling
+```javascript
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: 'simtech',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+```
+
+## 6. Security Implementation
+
+### 6.1 JWT Authentication
+```javascript
+const token = jwt.sign(
+    { id: user.id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+);
+```
+
+### 6.2 Rate Limiting
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+});
+```
+
+### 6.3 CORS Configuration
+```javascript
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}));
+```
