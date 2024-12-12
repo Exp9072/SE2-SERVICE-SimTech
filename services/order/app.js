@@ -197,6 +197,9 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
             // Commit transaksi
             await db.query('COMMIT');
 
+            // After successful order creation, send message
+            await sendOrderCreated(orderId, userResult[0].email, totalPrice);
+
             res.status(201).json({
                 message: 'Pesanan berhasil dibuat.',
                 order_id: orderId,
@@ -362,10 +365,26 @@ async function authenticateAdmin(req, res, next) {
     }
 }
 
-// Endpoint untuk mengupdate status pengiriman menjadi "Sudah Dikirim"
+// Add this after the connectRabbitMQ function
+const sendOrderStatusUpdate = async (orderId, status) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('order_status');
+        channel.sendToQueue('order_status', Buffer.from(JSON.stringify({
+            orderId,
+            status,
+            timestamp: new Date().toISOString()
+        })));
+        console.log(`Order status update sent to queue: Order ${orderId} -> ${status}`);
+    } catch (error) {
+        console.error('Error sending order status update:', error);
+    }
+};
+
+// Modify the PATCH endpoint for order status
 app.patch('/api/orders/:orderId/status', authenticateAdmin, async (req, res) => {
     const { orderId } = req.params;
-    const { status } = req.body;  // Mengambil status dari body request
+    const { status } = req.body;
 
     try {
         // Memeriksa apakah pesanan ada dan statusnya belum "Sudah Dikirim"
@@ -390,6 +409,10 @@ app.patch('/api/orders/:orderId/status', authenticateAdmin, async (req, res) => 
             'UPDATE orders SET status = ? WHERE order_id = ?',
             [status, orderId]
         );
+
+        // Send RabbitMQ message for status update
+        await sendOrderStatusUpdate(orderId, status);
+
         console.log('status pesanan berhasil diganti');
         res.status(200).json({ message: `Status pesanan ${orderId} berhasil diupdate menjadi "${status}".` });
     } catch (error) {
@@ -446,6 +469,9 @@ app.delete('/api/orders/:orderId', authenticateAdmin, async (req, res) => {
             'DELETE FROM orders WHERE order_id = ?',
             [orderId]
         );
+
+        // After successful deletion
+        await sendOrderDeleted(orderId);
 
         res.status(200).json({ message: `Pesanan ${orderId} berhasil dihapus dan stok telah diperbarui.` });
     } catch (error) {
@@ -829,6 +855,37 @@ app.get('/orders/:orderId/items', authenticateUser, async (req, res) => {
         });
     }
 });
+
+// Add these message sender functions after sendOrderStatusUpdate
+const sendOrderCreated = async (orderId, email, totalPrice) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('order_created');
+        channel.sendToQueue('order_created', Buffer.from(JSON.stringify({
+            orderId,
+            email,
+            totalPrice,
+            timestamp: new Date().toISOString()
+        })));
+        console.log(`New order notification sent: Order ${orderId}`);
+    } catch (error) {
+        console.error('Error sending order creation message:', error);
+    }
+};
+
+const sendOrderDeleted = async (orderId) => {
+    try {
+        const channel = getRabbitChannel();
+        await channel.assertQueue('order_deleted');
+        channel.sendToQueue('order_deleted', Buffer.from(JSON.stringify({
+            orderId,
+            timestamp: new Date().toISOString()
+        })));
+        console.log(`Order deletion notification sent: Order ${orderId}`);
+    } catch (error) {
+        console.error('Error sending order deletion message:', error);
+    }
+};
 
 // Jalankan Order Service
 const PORT = process.env.ORDER_SERVICE_PORT || 3003;
