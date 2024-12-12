@@ -124,6 +124,10 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
+app.get('/inventaris', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'inventaris.html'));
+});
+
 // Proxy untuk Logout
 app.use('/logout', proxy('http://user-service:3001', {
     proxyReqPathResolver: () => '/logout',
@@ -170,7 +174,7 @@ app.use('/auth/google/callback', proxy('https://cef1-139-194-77-206.ngrok-free.a
 
 // Proxy untuk GitHub OAuth
 app.use('/auth/github', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/github',
+    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github',
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -182,7 +186,7 @@ app.use('/auth/github', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
 }));
 
 app.use('/auth/github/callback', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/github/callback',
+    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -222,18 +226,43 @@ app.use('/api/products', proxy('http://product-service:3002', {
     proxyReqPathResolver: (req) => req.originalUrl,
 }));
 
-app.use('/api/orders', proxy('http://order-service:3003', {
-    secure: false,
+// Handle specific order routes first
+app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
+    proxyReqPathResolver: (req) => {
+        const path = `/orders/${req.params.orderId}/status`;
+        console.log('Proxying status update to:', path);
+        return path;
+    },
     changeOrigin: true,
-    proxyReqPathResolver: (req) => req.originalUrl,
+    secure: false,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id'];
         if (!userId) {
-            throw new Error('Missing user-id header. User must be authenticated.');
+            throw new Error('Missing user-id header');
+        }
+        proxyReqOpts.headers['user-id'] = userId;
+        proxyReqOpts.headers['Content-Type'] = 'application/json';
+        return proxyReqOpts;
+    },
+    onError: (err, req, res) => {
+        console.error('Proxy error:', err);
+        res.status(500).json({ message: 'Error proxying request' });
+    }
+}));
+
+// Then handle general order routes
+app.use('/api/orders', proxy('http://order-service:3003', {
+    proxyReqPathResolver: (req) => req.originalUrl.replace('/api/orders', '/orders'),
+    changeOrigin: true,
+    secure: false,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];
+        if (!userId) {
+            throw new Error('Missing user-id header');
         }
         proxyReqOpts.headers['user-id'] = userId;
         return proxyReqOpts;
-    },
+    }
 }));
 
 app.use('/api/payments', proxy('http://payment-service:3004', {
@@ -261,60 +290,35 @@ app.use('/api/orders/cart', proxy('http://order-service:3003', {
     },
 }));
 
-// Middleware untuk meneruskan permintaan ke service pesanan berdasarkan orderId
+// Handle all order-related routes
 app.use('/api/orders/:orderId/status', proxy('http://order-service:3003', {
-    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
-    pathRewrite: (path, req) => {
-        return path.replace('/api/orders', '/orders');  // Mengubah path untuk diteruskan ke endpoint yang sesuai di order-service
+    proxyReqPathResolver: (req) => {
+        console.log('Proxying status update to:', `/orders/${req.params.orderId}/status`);
+        return `/orders/${req.params.orderId}/status`;
     },
+    changeOrigin: true,
+    secure: false,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];  // Menambahkan header user-id ke proxy request
-        console.log('user-id: ',  userId);
-        if (userId) {
-            proxyReqOpts.headers['user-id'] = userId;  // Meneruskan user-id ke request proxy
+        const userId = srcReq.headers['user-id'];
+        if (!userId) {
+            throw new Error('Missing user-id header');
         }
+        proxyReqOpts.headers['user-id'] = userId;
+        proxyReqOpts.headers['Content-Type'] = 'application/json';
         return proxyReqOpts;
     },
     onError: (err, req, res) => {
-        console.log('error gateway onError');
-        console.error('Error proxying request:', err);
-        res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
-    }
-}));
-
-// Middleware untuk meneruskan permintaan untuk menghapus pesanan berdasarkan orderId dan status "unpaid"
-app.use('/api/orders/:orderId', proxy('http://order-service:3003', {
-    changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
-    pathRewrite: (path, req) => {
-        return path.replace('/api/orders', '/orders');  // Mengubah path untuk diteruskan ke endpoint yang sesuai di order-service
-    },
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-        const userId = srcReq.headers['user-id'];  // Menambahkan header user-id ke proxy request
-        console.log('user-id: ',  userId);
-        if (userId) {
-            proxyReqOpts.headers['user-id'] = userId;  // Meneruskan user-id ke request proxy
-        }
-        return proxyReqOpts;
-    },
-    onError: (err, req, res) => {
-        console.log('error gateway onError');
-        console.error('Error proxying request:', err);
-        res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
+        console.error('Proxy error:', err);
+        res.status(500).json({ message: 'Error proxying request' });
     }
 }));
 
 // Middleware untuk meneruskan permintaan ke service pesanan (get all orders, dengan atau tanpa filter payment)
 app.use('/api/admin/orders', proxy('http://order-service:3003', {
     changeOrigin: true,  // Mengubah origin header untuk menghindari masalah CORS
-    pathRewrite: (path, req) => {
-        const url = new URL(req.url, `http://${req.headers.host}`); // Mendapatkan query parameter
-        const payment = url.searchParams.get('payment'); // Ambil nilai query parameter "payment"
-
-        // Jika ada filter payment, tambahkan query ke path yang diteruskan ke service order
-        if (payment) {
-            return `/orders?payment=${payment}`;
-        }
-        return '/orders'; // Jika tidak ada filter payment, gunakan path tanpa query
+    proxyReqPathResolver: (req) => {
+        const payment = req.query.payment;
+        return `/api/admin/orders${payment ? `?payment=${payment}` : ''}`;
     },
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
         const userId = srcReq.headers['user-id']; // Mendapatkan user-id dari header
@@ -329,6 +333,18 @@ app.use('/api/admin/orders', proxy('http://order-service:3003', {
         console.error('Error proxying request:', err);
         res.status(500).json({ message: 'Terjadi kesalahan pada Gateway.' });
     }
+}));
+
+app.use('/api/inventory', proxy('http://product-service:3002', {
+    proxyReqPathResolver: (req) => req.originalUrl,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        const userId = srcReq.headers['user-id'];
+        if (!userId) {
+            throw new Error('Missing user-id header. User must be authenticated.');
+        }
+        proxyReqOpts.headers['user-id'] = userId;
+        return proxyReqOpts;
+    },
 }));
 
 // Create HTTPS server

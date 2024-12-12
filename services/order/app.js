@@ -114,88 +114,102 @@ async function authenticateUser(req, res, next) {
 
 // Endpoint untuk membuat pesanan baru
 app.post('/api/orders', authenticateUser, async (req, res) => {
-    const { items } = req.body;
-
-    if (!items || items.length === 0) {
-        return res.status(400).json({ message: 'Keranjang barang tidak boleh kosong.' });
-    }
-
-    // Loop melalui setiap item di keranjang dan periksa stok
-    for (let item of items) {
-        // Query untuk mengambil stok dari produk berdasarkan item_id
-        const [product] = await db.query('SELECT stock_quantity FROM items WHERE item_id = ?', [item.item_id]);
-        
-        // Jika produk tidak ditemukan atau stok tidak cukup
-        if (!product || product.stock_quantity < item.quantity) {
-            // Kirimkan respons dengan pesan stok tidak cukup
-            return res.status(400).json({
-                message: `Stok tidak cukup untuk produk: ${item.item_name || item.name}`
-            });
-        }
-    }
+    const { cart_items } = req.body;
+    const userId = req.headers['user-id'];
 
     try {
-        const connection = await db.getConnection();
-        await connection.beginTransaction();
-
-        console.log('Items received for order:', items); // Debugging
-
-        let totalPrice = 0;
-
-        for (const item of items) {
-            if (!item.item_id || !item.quantity) {
-                throw new Error(`Item tidak valid: ${JSON.stringify(item)}`);
-            }
-
-            const [rows] = await connection.query(
-                'SELECT price, stock_quantity FROM items WHERE item_id = ?',
-                [item.item_id]
+        // Periksa stok untuk semua item sebelum membuat pesanan
+        for (const item of cart_items) {
+            const [stockResult] = await db.query(
+                'SELECT stock_quantity FROM items WHERE item_id = ? FOR UPDATE',
+                [item.product_id]
             );
 
-            if (rows.length === 0) {
-                throw new Error(`Produk dengan ID ${item.item_id} tidak ditemukan.`);
-            }
-
-            const { price: pricePerUnit, stock_quantity: stock } = rows[0];
-
-            if (stock < item.quantity) {
-                return res.status(400).json({
-                    message: `Stok tidak cukup untuk produk: ${item.item_name || item.name}`
+            if (stockResult.length === 0) {
+                return res.status(404).json({
+                    message: `Produk dengan ID ${item.product_id} tidak ditemukan.`
                 });
-                //throw new Error(`Stok tidak cukup untuk produk ID ${item.item_id}.`);
             }
 
-            totalPrice += pricePerUnit * item.quantity;
-
-            // Kurangi stok barang
-            await connection.query(
-                'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
-                [item.quantity, item.item_id]
-            );
+            const availableStock = parseInt(stockResult[0].stock_quantity);
+            const requestedQuantity = parseInt(item.quantity);
+            
+            console.log(`Product ${item.product_id} - Available: ${availableStock}, Requested: ${requestedQuantity}`);
+            
+            if (availableStock < requestedQuantity) {
+                return res.status(400).json({
+                    message: 'Stok tidak cukup untuk beberapa produk di keranjang.'
+                });
+            }
         }
 
-        const [orderResult] = await connection.query(
-            'INSERT INTO orders (email, order_date, total_price, payment, status) VALUES (?, NOW(), ?, "unpaid", "belum dikirim")',
-            [req.userEmail, totalPrice]
-        );
+        // Mulai transaksi
+        await db.query('START TRANSACTION');
 
-        const orderId = orderResult.insertId;
-
-        // Masukkan data ke tabel order_items
-        for (const item of items) {
-            await connection.query(
-                'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
-                [orderId, item.item_id, item.quantity, item.price]
+        try {
+            // Buat pesanan baru
+            const [userResult] = await db.query(
+                'SELECT email FROM users WHERE id = ?',
+                [userId]
             );
+
+            if (userResult.length === 0) {
+                await db.query('ROLLBACK');
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            const [orderResult] = await db.query(
+                'INSERT INTO orders (email, order_date, payment) VALUES (?, NOW(), "unpaid")',
+                [userResult[0].email]
+            );
+            const orderId = orderResult.insertId;
+
+            // Masukkan item pesanan dan kurangi stok
+            let totalPrice = 0;
+            for (const item of cart_items) {
+                // Dapatkan harga produk
+                const [priceResult] = await db.query(
+                    'SELECT price FROM items WHERE item_id = ?',
+                    [item.product_id]
+                );
+                const itemPrice = priceResult[0].price * item.quantity;
+                totalPrice += itemPrice;
+
+                // Masukkan item ke order_items
+                await db.query(
+                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)',
+                    [orderId, item.product_id, item.quantity, itemPrice]
+                );
+
+                // Kurangi stok
+                await db.query(
+                    'UPDATE items SET stock_quantity = stock_quantity - ? WHERE item_id = ?',
+                    [item.quantity, item.product_id]
+                );
+            }
+
+            // Update total harga pesanan
+            await db.query(
+                'UPDATE orders SET total_price = ? WHERE order_id = ?',
+                [totalPrice, orderId]
+            );
+
+            // Commit transaksi
+            await db.query('COMMIT');
+
+            res.status(201).json({
+                message: 'Pesanan berhasil dibuat.',
+                order_id: orderId,
+                total_price: totalPrice
+            });
+        } catch (error) {
+            // Rollback jika terjadi error
+            await db.query('ROLLBACK');
+            throw error;
         }
-
-        await connection.commit();
-        connection.release();
-
-        res.status(201).json({ message: 'Pesanan berhasil dibuat.', orderId });
     } catch (error) {
         console.error('Error creating order:', error);
-        res.status(500).json({ message: 'Terjadi kesalahan saat membuat pesanan.', error: error.message });
+        res.status(500).json({ message: 'Terjadi kesalahan saat membuat pesanan.' });
     }
 });
 
@@ -338,7 +352,7 @@ async function authenticateAdmin(req, res, next) {
         }
 
         if (rows[0].role !== 'admin') {
-            return res.status(403).json({ message: 'Forbidden: You do not have admin privileges.' });
+            return res.status(403).json({ message: 'Forbidden: Tidak mempunyai ADMIN Privilege.' });
         }
 
         next();
@@ -440,25 +454,34 @@ app.delete('/api/orders/:orderId', authenticateAdmin, async (req, res) => {
     }
 });
 
-// Endpoint untuk mendapatkan semua pesanan, dengan opsi filter berdasarkan status pembayaran "unpaid"
+// Endpoint untuk mendapatkan semua pesanan, dengan opsi filter berdasarkan status pembayaran
 app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
-    const { payment } = req.query; // Mendapatkan query parameter "payment"
-
+    const { payment, status } = req.query;
+    
     try {
         let query = 'SELECT * FROM orders';
         let queryParams = [];
-
-        // Jika ada query "payment", tambahkan filter untuk pembayaran "unpaid"
-        if (payment === 'unpaid') {
-            query += ' WHERE payment = ?';
-            queryParams.push('unpaid');
+        
+        let conditions = [];
+        if (status && status !== 'all') {
+            conditions.push('status = ?');
+            queryParams.push(status);
         }
-
+        if (payment && payment !== 'all') {
+            conditions.push('payment = ?');
+            queryParams.push(payment);
+        }
+        
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+        
         query += ' ORDER BY order_date DESC';
-
-        console.log('Query untuk mendapatkan orders:', query);
+        console.log('Query:', query, 'Params:', queryParams); // Debug log
+        
         const [orders] = await db.query(query, queryParams);
-
+        console.log('Fetched orders:', orders); // Debug log
+        
         res.status(200).json({
             message: 'Data pesanan berhasil diambil.',
             orders,
@@ -466,6 +489,88 @@ app.get('/api/admin/orders', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error fetching orders:', error);
         res.status(500).json({ message: 'Terjadi kesalahan saat mengambil data pesanan.' });
+    }
+});
+
+// Delete unpaid order (admin only)
+app.delete('/orders/:orderId', authenticateAdmin, async (req, res) => {
+    const { orderId } = req.params;
+
+    try {
+        // Check if order exists and is unpaid
+        const [order] = await db.query(
+            'SELECT * FROM orders WHERE order_id = ? AND payment = "unpaid"',
+            [orderId]
+        );
+
+        if (order.length === 0) {
+            return res.status(404).json({ message: 'Order not found or already paid' });
+        }
+
+        // Delete order and related items
+        await db.query('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+        await db.query('DELETE FROM orders WHERE order_id = ?', [orderId]);
+
+        res.json({ message: 'Order deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Update order status (admin only)
+app.patch('/orders/:orderId/status', authenticateAdmin, async (req, res) => {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    console.log('Received status update request:', { orderId, status });
+
+    if (!status) {
+        return res.status(400).json({ message: 'Status is required' });
+    }
+
+    // Validate status value
+    const validStatuses = ['sedang dikirim', 'sudah dikirim'];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ 
+            message: 'Invalid status. Must be either "sedang dikirim" or "sudah dikirim"' 
+        });
+    }
+
+    try {
+        // Verify order exists and is paid
+        const [order] = await db.query(
+            'SELECT * FROM orders WHERE order_id = ?',
+            [orderId]
+        );
+        
+        if (order.length === 0) {
+            console.log('Order not found:', orderId);
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Only allow status updates for paid orders
+        if (order[0].payment !== 'paid') {
+            console.log('Cannot update unpaid order:', orderId);
+            return res.status(400).json({ message: 'Cannot update status of unpaid order' });
+        }
+        
+        // Update the status
+        const [result] = await db.query(
+            'UPDATE orders SET status = ? WHERE order_id = ?',
+            [status, orderId]
+        );
+        
+        console.log('Update result:', result);
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Failed to update order status' });
+        }
+        
+        console.log('Order status updated successfully');
+        res.json({ message: 'Order status updated successfully' });
+    } catch (error) {
+        console.error('Error updating order status:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 

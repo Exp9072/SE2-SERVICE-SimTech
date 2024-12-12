@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management - Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #017cff;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #017cff;
+            margin: 10px 0;
+        }
+
+        .inventory-table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .low-stock {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-low {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .status-ok {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .history-section {
+            margin-top: 30px;
+        }
+
+        .history-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .filters {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .filters select, .filters input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .user-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            margin-right: 40px;
+        }
+
+        .profile-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .dropdown.active {
+            display: block;
+        }
+
+        .dropdown button {
+            display: block;
+            width: 100%;
+            padding: 8px 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .dropdown button:hover {
+            background: #f5f5f5;
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .inventory-table {
+                overflow-x: auto;
+            }
+        }
+
+        .action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #017cff;
+            color: white;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: #0066d6;
+            transform: translateY(-2px);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .edit-btn, .submit-btn {
+            background-color: #017cff;
+            color: white;
+        }
+
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .tab-buttons {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            background-color: #017cff;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .orders-filter {
+            margin-bottom: 20px;
+        }
+
+        .status-badge.unpaid {
+            background-color: #dc3545;
+        }
+
+        .status-badge.paid {
+            background-color: #28a745;
+        }
+
+        .status-badge.shipping {
+            background-color: #ffc107;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-badge.delivered {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .status-select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .status-badge.status-unpaid {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .status-badge.status-paid {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .edit-status-btn {
+            background-color: #017cff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .edit-status-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="brand">SimTech Admin</a>
+        <div class="user-menu">
+            <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
+            <div id="dropdown-menu" class="dropdown">
+                <button id="logout-btn">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="inventory">Inventory</button>
+            <button class="tab-btn" data-tab="orders">Orders</button>
+        </div>
+
+        <div id="inventory-tab" class="tab-content active">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3>Total Products</h3>
+                    <div id="total-products" class="value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Low Stock Items</h3>
+                    <div id="low-stock" class="value">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Inventory Value</h3>
+                    <div id="total-value" class="value">Rp 0</div>
+                </div>
+            </div>
+
+            <div class="filters">
+                <select id="type-filter">
+                    <option value="">All Types</option>
+                    <option value="Processor">Processor</option>
+                    <option value="Graphics-Card">Graphics Card</option>
+                    <option value="RAM">RAM</option>
+                    <option value="Motherboard">Motherboard</option>
+                    <option value="Storage">Storage</option>
+                    <option value="PSU">PSU</option>
+                    <option value="Cooling">Cooling</option>
+                    <option value="Casing">Casing</option>
+                </select>
+                <select id="stock-filter">
+                    <option value="">All Stock Levels</option>
+                    <option value="low">Low Stock (< 5)</option>
+                    <option value="ok">Normal Stock (≥ 5)</option>
+                </select>
+                <button id="add-product-btn" class="action-btn">Add New Product</button>
+            </div>
+
+            <div class="inventory-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Type</th>
+                            <th>Stock</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-body"></tbody>
+                </table>
+            </div>
+
+            <div class="history-section">
+                <h2>Recent Stock Changes</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Product</th>
+                            <th>Quantity Change</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body"></tbody>
+                </table>
+            </div>
+
+            <div id="add-product-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Add New Product</h2>
+                    <form id="add-product-form">
+                        <div class="form-group">
+                            <label>Product Name</label>
+                            <input type="text" name="item_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select name="item_type" required>
+                                <option value="Processor">Processor</option>
+                                <option value="Graphics-Card">Graphics Card</option>
+                                <option value="RAM">RAM</option>
+                                <option value="Motherboard">Motherboard</option>
+                                <option value="Storage">Storage</option>
+                                <option value="PSU">PSU</option>
+                                <option value="Cooling">Cooling</option>
+                                <option value="Casing">Casing</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Brand</label>
+                            <input type="text" name="brand" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Model</label>
+                            <input type="text" name="model" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input type="number" name="price" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock</label>
+                            <input type="number" name="stock_quantity" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Image URL</label>
+                            <input type="text" name="image_url" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Details</label>
+                            <textarea name="details"></textarea>
+                        </div>
+                        <div class="form-group" id="min-watt-group" style="display: none;">
+                            <label>Minimum Power Supply (Watts)</label>
+                            <input type="number" name="min_watt" min="0">
+                        </div>
+                        <div class="button-group">
+                            <button type="button" class="cancel-btn" id="cancel-add-btn">Cancel</button>
+                            <button type="submit" class="submit-btn">Add Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="edit-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Edit Product</h2>
+                    <form id="edit-form">
+                        <input type="hidden" name="item_name">
+                        <div class="form-group">
+                            <label>Stock</label>
+                            <input type="number" name="stock" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input type="number" name="price" required>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" class="cancel-btn" onclick="closeEditModal()">Cancel</button>
+                            <button type="submit" class="submit-btn">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="orders-tab" class="tab-content">
+            <div class="orders-filter">
+                <select id="order-status-filter">
+                    <option value="all">All Orders</option>
+                    <option value="Belum Dikirim">Belum Dikirim</option>
+                    <option value="Sedang Dikirim">Sedang Dikirim</option>
+                    <option value="Sudah Dikirim">Sudah Dikirim</option>
+                </select>
+            </div>
+            <div class="orders-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Date</th>
+                            <th>Total</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define modal functions globally
+        function closeAddModal() {
+            document.getElementById('add-product-modal').classList.remove('active');
+            const minWattGroup = document.getElementById('min-watt-group');
+            const minWattInput = document.querySelector('input[name="min_watt"]');
+            minWattGroup.style.display = 'none';
+            minWattInput.required = false;
+            minWattInput.value = '';
+            // Clear all form fields
+            document.getElementById('add-product-form').reset();
+        }
+
+        function openEditModal(itemName, currentStock, currentPrice) {
+            const modal = document.getElementById('edit-modal');
+            const form = document.getElementById('edit-form');
+            form.elements['item_name'].value = itemName;
+            form.elements['stock'].value = currentStock;
+            form.elements['price'].value = currentPrice;
+            modal.classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                alert('Please login first');
+                window.location.href = '/login';
+                return;
+            }
+
+            // Load inventory function
+            const loadInventory = async () => {
+                try {
+                    // Get filter values
+                    const typeFilter = document.getElementById('type-filter').value;
+                    const stockFilter = document.getElementById('stock-filter').value;
+                    
+                    const response = await fetch('/api/inventory', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    const data = await response.json();
+
+                    // Apply filters
+                    let filteredData = data;
+                    
+                    // Filter by type
+                    if (typeFilter && typeFilter !== 'all') {
+                        filteredData = filteredData.filter(item => item.item_type === typeFilter);
+                    }
+                    
+                    // Filter by stock level
+                    if (stockFilter === 'low') {
+                        filteredData = filteredData.filter(item => item.stock_quantity < 5);
+                    } else if (stockFilter === 'out') {
+                        filteredData = filteredData.filter(item => item.stock_quantity === 0);
+                    }
+
+                    const tbody = document.getElementById('inventory-body');
+                    tbody.innerHTML = filteredData.map(item => `
+                        <tr>
+                            <td>${item.item_name}</td>
+                            <td>${item.item_type}</td>
+                            <td class="${item.stock_quantity < 5 ? 'low-stock' : ''}">${item.stock_quantity}</td>
+                            <td>Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</td>
+                            <td>
+                                <span class="status-badge ${item.stock_quantity < 5 ? 'status-low' : 'status-ok'}">
+                                    ${item.stock_quantity < 5 ? 'Low Stock' : 'In Stock'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="edit-btn" 
+                                    data-name="${item.item_name}" 
+                                    data-stock="${item.stock_quantity}" 
+                                    data-price="${item.price}">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    // Add event listeners to edit buttons
+                    addEditButtonListeners();
+                } catch (error) {
+                    console.error('Error loading inventory:', error);
+                }
+            };
+
+            // Function to add edit button listeners
+            const addEditButtonListeners = () => {
+                document.querySelectorAll('.edit-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const itemName = button.getAttribute('data-name');
+                        const currentStock = parseInt(button.getAttribute('data-stock'));
+                        const currentPrice = parseInt(button.getAttribute('data-price'));
+                        openEditModal(itemName, currentStock, currentPrice);
+                    });
+                });
+            };
+
+            // Add filter change event listeners
+            document.getElementById('type-filter').addEventListener('change', loadInventory);
+            document.getElementById('stock-filter').addEventListener('change', loadInventory);
+
+            // Initial load
+            loadInventory();
+
+            const loadStats = async () => {
+                try {
+                    const response = await fetch('/api/inventory/stats', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    if (!response.ok) throw new Error('Failed to load stats');
+                    
+                    const stats = await response.json();
+                    document.getElementById('total-products').textContent = stats.totalProducts;
+                    document.getElementById('low-stock').textContent = stats.lowStockCount;
+                    document.getElementById('total-value').textContent = 
+                        `Rp ${new Intl.NumberFormat('id-ID').format(stats.totalValue)}`;
+                } catch (error) {
+                    console.error('Error loading stats:', error);
+                }
+            };
+
+            const loadHistory = async () => {
+                try {
+                    const response = await fetch('/api/inventory/history', {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    if (!response.ok) throw new Error('Failed to load history');
+                    
+                    const history = await response.json();
+                    const tbody = document.getElementById('history-body');
+                    tbody.innerHTML = history.map(item => `
+                        <tr>
+                            <td>${new Date(item.order_date).toLocaleDateString()}</td>
+                            <td>${item.item_name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.status}</td>
+                        </tr>
+                    `).join('');
+                } catch (error) {
+                    console.error('Error loading history:', error);
+                }
+            };
+
+            // Initialize
+            await loadStats();
+            await loadInventory();
+            await loadHistory();
+
+            // Profile menu
+            const profilePicture = document.getElementById('profile-picture');
+            const dropdownMenu = document.getElementById('dropdown-menu');
+            const logoutBtn = document.getElementById('logout-btn');
+
+            profilePicture.addEventListener('click', () => {
+                dropdownMenu.classList.toggle('active');
+            });
+
+            logoutBtn.addEventListener('click', async () => {
+                await fetch('/logout', { method: 'POST' });
+                localStorage.removeItem('userId');
+                window.location.href = '/login';
+            });
+
+            document.getElementById('add-product-btn').addEventListener('click', () => {
+                document.getElementById('add-product-modal').classList.add('active');
+            });
+
+            document.getElementById('cancel-add-btn').addEventListener('click', closeAddModal);
+
+            document.querySelector('select[name="item_type"]').addEventListener('change', (e) => {
+                const minWattGroup = document.getElementById('min-watt-group');
+                const minWattInput = document.querySelector('input[name="min_watt"]');
+                
+                if (e.target.value === 'Graphics-Card') {
+                    minWattGroup.style.display = 'block';
+                    minWattInput.required = true;
+                } else {
+                    minWattGroup.style.display = 'none';
+                    minWattInput.required = false;
+                    minWattInput.value = '';
+                }
+            });
+
+            document.getElementById('add-product-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                if (data.item_type === 'Graphics-Card') {
+                    data.min_watt = parseInt(data.min_watt) || 0;
+                } else {
+                    data.min_watt = null;
+                }
+
+                try {
+                    const response = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        alert('Product added successfully');
+                        closeAddModal();
+                        loadInventory();
+                    } else {
+                        alert('Failed to add product');
+                    }
+                } catch (error) {
+                    console.error('Error adding product:', error);
+                    alert('Error adding product');
+                }
+            });
+
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+
+                try {
+                    // Update stock
+                    const stockResponse = await fetch('/api/products/stock', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify({
+                            item_name: data.item_name,
+                            stock: parseInt(data.stock)
+                        })
+                    });
+
+                    // Update price
+                    const priceResponse = await fetch('/api/products/price', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': userId
+                        },
+                        body: JSON.stringify({
+                            item_name: data.item_name,
+                            price: parseInt(data.price)
+                        })
+                    });
+
+                    if (stockResponse.ok && priceResponse.ok) {
+                        alert('Product updated successfully');
+                        closeEditModal();
+                        loadInventory();
+                    } else {
+                        alert('Failed to update product');
+                    }
+                } catch (error) {
+                    console.error('Error updating product:', error);
+                    alert('Error updating product');
+                }
+            });
+
+            // Tab switching functionality
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(`${button.dataset.tab}-tab`).classList.add('active');
+                    if (button.dataset.tab === 'orders') {
+                        loadOrders();
+                    }
+                });
+            });
+
+            // Load orders function
+            const loadOrders = async () => {
+                try {
+                    const statusFilter = document.getElementById('order-status-filter').value;
+                    const response = await fetch(`/api/admin/orders${statusFilter !== 'all' ? `?status=${encodeURIComponent(statusFilter)}` : ''}`, {
+                        headers: {
+                            'user-id': userId
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to load orders');
+                    const orders = await response.json();
+                    console.log('Loaded orders:', orders);
+                    
+                    const tbody = document.getElementById('orders-body');
+                    tbody.innerHTML = orders.orders.map(order => `
+                        <tr>
+                            <td>${order.order_id}</td>
+                            <td>${order.email}</td>
+                            <td>${new Date(order.order_date).toLocaleDateString()}</td>
+                            <td>Rp ${new Intl.NumberFormat('id-ID').format(order.total_price)}</td>
+                            <td>
+                                <span class="status-badge ${getPaymentStatusClass(order.payment)}">
+                                    ${order.payment}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${
+                                    order.status === 'sudah dikirim' ? 'delivered' : 
+                                    order.status === 'sedang dikirim' ? 'shipping' : ''
+                                }">${order.status}</span>
+                                ${order.payment === 'paid' && order.status === 'sedang dikirim' ? 
+                                    `<button class="edit-status-btn" data-order-id="${order.order_id}">
+                                        Update to Delivered
+                                    </button>` : ''
+                                }
+                            </td>
+                            <td>
+                                ${getOrderActions(order)}
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    // Add event listeners to edit status buttons
+                    document.querySelectorAll('.edit-status-btn').forEach(button => {
+                        button.addEventListener('click', async (e) => {
+                            const orderId = e.target.dataset.orderId;
+                            const newStatus = 'sudah dikirim';
+                            
+                            try {
+                                const response = await fetch(`/api/orders/${orderId}/status`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'user-id': userId
+                                    },
+                                    body: JSON.stringify({ status: newStatus })
+                                });
+
+                                if (response.ok) {
+                                    alert('Order status updated successfully');
+                                    // Update the display
+                                    const td = button.parentElement;
+                                    td.innerHTML = `<span class="status-badge delivered">${newStatus}</span>`;
+                                } else {
+                                    alert('Failed to update order status');
+                                    loadOrders();
+                                }
+                            } catch (error) {
+                                console.error('Error updating order status:', error);
+                                alert('Error updating order status');
+                                loadOrders();
+                            }
+                        });
+                    });
+
+                    addOrderActionListeners();
+                } catch (error) {
+                    console.error('Error loading orders:', error);
+                }
+            };
+
+            const getPaymentStatusClass = (payment) => {
+                switch (payment) {
+                    case 'unpaid': return 'status-unpaid';
+                    case 'paid': return 'status-paid';
+                    default: return '';
+                }
+            };
+
+            const getOrderActions = (order) => {
+                if (order.payment === 'unpaid') {
+                    return `<button class="action-btn delete-btn" data-order-id="${order.order_id}">Delete</button>`;
+                }
+                return '';
+            };
+
+            const addOrderActionListeners = () => {
+                // Delete unpaid orders
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to delete this unpaid order?')) {
+                            try {
+                                const response = await fetch(`/api/orders/${button.dataset.orderId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'user-id': userId
+                                    }
+                                });
+
+                                if (response.ok) {
+                                    alert('Order deleted successfully');
+                                    loadOrders();
+                                } else {
+                                    alert('Failed to delete order');
+                                }
+                            } catch (error) {
+                                console.error('Error deleting order:', error);
+                                alert('Error deleting order');
+                            }
+                        }
+                    });
+                });
+
+                // Mark orders as delivered
+                document.querySelectorAll('.deliver-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        try {
+                            const response = await fetch(`/api/orders/${button.dataset.orderId}/status`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'user-id': userId
+                                },
+                                body: JSON.stringify({ status: 'sudah dikirim' })
+                            });
+
+                            if (response.ok) {
+                                alert('Order marked as delivered');
+                                loadOrders();
+                            } else {
+                                alert('Failed to update order status');
+                            }
+                        } catch (error) {
+                            console.error('Error updating order status:', error);
+                            alert('Error updating order status');
+                        }
+                    });
+                });
+            };
+
+            // Add order filter change handler
+            document.getElementById('order-status-filter').addEventListener('change', loadOrders);
+        });
+    </script>
+</body>
+</html>

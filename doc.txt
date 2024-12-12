@@ -30,7 +30,7 @@ API Routes and Endpoints
    Product Routes:
    - GET /api/products
      * Retrieve all products
-     * Optional query parameters for filtering
+     * Public access
    
    - GET /api/products/:id
      * Get specific product details
@@ -41,6 +41,22 @@ API Routes and Endpoints
      * Update product stock
      * Required: product ID, quantity
      * Authentication required
+
+   Admin Routes (Requires Admin Authentication):
+   - POST /api/products
+     * Add new product
+     * Required: item details (name, type, brand, model, price, etc.)
+     * Admin only
+   
+   - PATCH /api/products/stock
+     * Add stock to existing product
+     * Required: item_name, stock (fixed value: 2)
+     * Admin only
+   
+   - PATCH /api/products/price
+     * Update product price
+     * Required: item_name, new price
+     * Admin only
 
 4. Order Service (Port 3003)
    Order Management:
@@ -61,6 +77,27 @@ API Routes and Endpoints
    - POST /api/orders/cart
      * Add items to cart
      * Required: user ID, product details
+
+   Admin Routes (Requires Admin Authentication):
+   - PATCH /api/orders/:orderId/status
+     * Update order shipping status
+     * Required: orderId (params), status (body)
+     * Admin only
+     * Updates order status (e.g., "Sudah Dikirim")
+   
+   - DELETE /api/orders/:orderId
+     * Delete unpaid orders
+     * Required: orderId (params)
+     * Admin only
+     * Restores product stock quantities
+     * Only works for orders with "unpaid" status
+   
+   - GET /api/admin/orders
+     * Get all orders with optional payment filter
+     * Query params: payment (optional, filter for "unpaid")
+     * Admin only
+     * Returns all orders sorted by date
+     * Can filter unpaid orders using ?payment=unpaid
 
 5. Payment Service (Port 3004)
    Payment Processing:
@@ -134,3 +171,41 @@ Error Responses
 
 4. Server Errors:
    - 500: Internal Server Error
+
+Admin Authentication
+------------------
+1. Admin Middleware:
+   - Verifies user-id in request headers
+   - Checks user role in database
+   - Only allows 'admin' role to access protected routes
+
+2. Admin Privileges:
+   - Product management (add/update)
+   - Stock control
+   - Price management
+   - Access to admin-only endpoints
+
+3. Admin Response Codes:
+   - 401: Missing user ID
+   - 403: Non-admin user
+   - 500: Authentication error
+
+Admin Order Management
+--------------------
+1. Order Status Control:
+   - Admins can update shipping status
+   - Verify order existence
+   - Prevent duplicate status updates
+   - Track shipping status changes
+
+2. Order Deletion:
+   - Remove unpaid orders
+   - Automatic stock restoration
+   - Verification of payment status
+   - Cascading deletion of order items
+
+3. Order Monitoring:
+   - View all system orders
+   - Filter by payment status
+   - Sort by order date
+   - Access detailed order information

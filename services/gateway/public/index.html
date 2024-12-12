@@ -564,6 +564,7 @@
             <a href="/pc-ready" class="nav-link" data-require-login="false">PC Ready</a>
             <a href="/simulasi" class="nav-link" data-require-login="true">Simulasi</a>
             <a href="/cart" class="nav-link" data-require-login="true">Cart</a>
+            <a href="/inventaris" id="inventaris-link" class="nav-link" style="display: none;">Inventaris</a>
         </nav>   
         <div class="user-menu">
             <img id="profile-picture" class="profile-circle" src="images/default-profile.png" alt="Profile">
@@ -975,11 +976,11 @@
                 if (data.success && data.user) {
                     isLoggedIn = true;
                     profilePicture.src = data.user.profilePicture || 'images/default-profile.png';
-                    localStorage.setItem('userId', data.user.id); // Simpan userId
-                    localStorage.setItem('userEmail', data.user.email); // Simpan email jika diperlukan
-                    console.log('index-html');
-                    console.log('User-id', data.user.id);
-                    console.log('userEmail',data.user.email);
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('userEmail', data.user.email);
+                    if (data.user.role === 'admin') {
+                        document.getElementById('inventaris-link').style.display = 'inline-block';
+                    }
                     loginBtn.style.display = 'none';
                     logoutBtn.style.display = 'block';
                     orderBtn.style.display = 'block';
@@ -990,6 +991,7 @@
                     orderBtn.style.display = 'block';
                     localStorage.removeItem('userId');
                     localStorage.removeItem('userEmail');
+                    document.getElementById('inventaris-link').style.display = 'none';
                 }
     
                 profilePicture.addEventListener('click', (e) => {

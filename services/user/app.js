@@ -242,7 +242,7 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] 
 // GitHub OAuth Callback Endpoint
 app.get('/auth/github/callback',
     passport.authenticate('github', {
-        failureRedirect: 'https://192.168.0.5:8443/login',
+        failureRedirect: 'https://83f7-182-2-166-159.ngrok-free.app/login',
         failureMessage: true,
         session: true
     }),
@@ -255,7 +255,7 @@ app.get('/auth/github/callback',
         
         if (!req.user) {
             console.log('No user found in request');
-            return res.redirect('https://192.168.0.5:8443/login?error=auth_failed');
+            return res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
         }
 
         // Store in LOGIN_GOOGLE array (we'll use this for both Google and GitHub)
@@ -279,14 +279,14 @@ app.get('/auth/github/callback',
         req.session.save((err) => {
             if (err) {
                 console.error('Session save error:', err);
-                return res.redirect('https://192.168.0.5:8443/login?error=session_error');
+                return res.redirect('https://9d17-139-194-77-206.ngrok-free.app/login?error=session_error');
             }
             console.log('Session saved with user:', req.session.user);
             console.log('Session saved successfully, redirecting to homepage');
             
             // Send user data in query params
             const userData = encodeURIComponent(JSON.stringify(req.session.user));
-            res.redirect(`https://192.168.0.5:8443?user=${userData}`);
+            res.redirect(`https://9d17-139-194-77-206.ngrok-free.app?user=${userData}`);
         });
     }
 );

@@ -364,35 +364,35 @@
                     return;
                 }
 
-                    // Validasi stok secara manual (misalnya, stok maksimal 10)
-                const isStockSufficient = cart.every(item => item.quantity <= 10); // Ganti dengan logika yang sesuai
-                if (!isStockSufficient) {
-                    alert('Stok tidak cukup untuk beberapa produk di keranjang.');
-                    return;
-                }
-
                 try {
+                    // Format cart items for the order
+                    const cart_items = cart.map(item => ({
+                        product_id: item.item_id || item.id,
+                        quantity: item.quantity || 1,  // Default to 1 if quantity not specified
+                    }));
+                    console.log("Cart items:", cart_items);
+
                     const response = await fetch('/api/orders', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'user-id': userId, // Pastikan userId diteruskan
+                            'user-id': userId
                         },
-                        body: JSON.stringify({ items: cart }), // Kirim data pesanan ke server
+                        body: JSON.stringify({ cart_items })
                     });
-                    
-                    const result = await response.json();
-                    
+
+                    const data = await response.json();
+
                     if (response.ok) {
-                        alert('Pesanan berhasil dibuat! Nomor pesanan Anda: ' + result.orderId);
-                        localStorage.removeItem('cart'); // Kosongkan keranjang setelah checkout
-                        window.location.href = '/orders'; // Redirect ke halaman daftar pesanan
+                        // Clear cart after successful order
+                        localStorage.removeItem('cart');
+                        alert('Pesanan berhasil dibuat!');
+                        window.location.href = `/payment?order_id=${data.order_id}`;
                     } else {
-                        // Jika ada pesan kesalahan dari server, tampilkan di alert
-                        alert(`Gagal membuat pesanan: ${result.message || 'Terjadi kesalahan saat membuat pesanan.'}`);
+                        alert(data.message || 'Terjadi kesalahan saat membuat pesanan.');
                     }
                 } catch (error) {
-                    console.error('Error during checkout:', error);
+                    console.error('Error creating order:', error);
                     alert('Terjadi kesalahan saat membuat pesanan.');
                 }
             });
