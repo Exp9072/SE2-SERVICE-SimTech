@@ -547,3 +547,87 @@ A:
    - Self-signed for development
    - Trusted CA for production
    - Different configurations
+
+## 12. JWT (JSON Web Token)
+
+Q: "Bagaimana cara kerja JWT dalam sistem microservices?"
+A: JWT (JSON Web Token) digunakan untuk autentikasi antar services:
+
+1. **Flow JWT:**
+   ```plaintext
+   1. Login Process:
+      - User login ke user-service
+      - User-service memverifikasi credentials
+      - User-service generate JWT dengan payload (user id, email, role)
+      - JWT dikirim ke client
+
+   2. Request ke Service Lain:
+      - Client mengirim request dengan JWT di header
+      - Gateway memverifikasi JWT signature
+      - Jika valid, request diteruskan ke service yang dituju
+      - Service menerima decoded JWT dengan user info
+   ```
+
+2. **Struktur JWT:**
+   ```plaintext
+   header.payload.signature
+
+   Header: 
+   {
+     "alg": "HS256",
+     "typ": "JWT"
+   }
+
+   Payload:
+   {
+     "id": 1,
+     "email": "user@example.com",
+     "role": "admin",
+     "iat": 1516239022,
+     "exp": 1516247022
+   }
+
+   Signature: HMACSHA256(
+     base64UrlEncode(header) + "." +
+     base64UrlEncode(payload),
+     secret_key
+   )
+   ```
+
+3. **Implementasi di Code:**
+   ```javascript
+   // User Service - Generate JWT
+   const token = jwt.sign(
+     { id: user.id, email: user.email, role: user.role },
+     process.env.JWT_SECRET,
+     { expiresIn: '24h' }
+   );
+
+   // Gateway - Verify JWT
+   const verifyToken = (req, res, next) => {
+     const token = req.headers.authorization?.split(' ')[1];
+     if (!token) return res.status(401).json({ message: 'No token provided' });
+
+     try {
+       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+       req.user = decoded;  // Attach user info to request
+       next();
+     } catch (error) {
+       res.status(401).json({ message: 'Invalid token' });
+     }
+   };
+   ```
+
+4. **Keuntungan JWT:**
+   - Stateless - tidak perlu menyimpan session
+   - Scalable - works well dengan microservices
+   - Secure - signed dengan secret key
+   - Portable - bisa digunakan di berbagai service
+   - Self-contained - berisi semua info yang dibutuhkan
+
+5. **Security Considerations:**
+   - JWT Secret harus aman
+   - Set expiration time yang sesuai
+   - Jangan simpan data sensitif di payload
+   - Gunakan HTTPS untuk transmisi
+   - Implement token refresh mechanism
