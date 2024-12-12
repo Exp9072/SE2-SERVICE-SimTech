@@ -970,7 +970,12 @@
 
             try {
                 // Periksa apakah pengguna telah login
-                const response = await fetch('/auth/user');
+                const token = localStorage.getItem('token');
+                const response = await fetch('/auth/user', {
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                    }
+                });
                 const data = await response.json();
     
                 if (data.success && data.user) {

@@ -419,19 +419,19 @@ if (!process.env.JWT_SECRET) {
 app.post('/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Login attempt for:', email); // Debug log
+        console.log('Login attempt for:', email);
 
         const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
         
         if (users.length === 0) {
             console.log('User not found:', email);
-            return res.status(401).json({ message: 'Email atau password salah' });
+            return res.status(401).json({ success: false, message: 'Email atau password salah' });
         }
         
         const user = users[0];
         if (password !== user.password) {
             console.log('Invalid password for user:', email);
-            return res.status(401).json({ message: 'Email atau password salah' });
+            return res.status(401).json({ success: false, message: 'Email atau password salah' });
         }
         
         // Generate JWT token
@@ -444,13 +444,6 @@ app.post('/auth/login', async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
-
-        // Set session data
-        req.session.user = {
-            id: user.id,
-            email: user.email,
-            role: user.role
-        };
         
         console.log('Login successful for:', email, 'Role:', user.role);
         
