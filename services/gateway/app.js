@@ -89,7 +89,7 @@ app.use((err, req, res, next) => {
 // **1. Pembatas Rate Global**
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 1000, // Maksimal 300 permintaan per IP dalam 15 menit
+    max: 2000, // Increased from 1000 to 2000
     message: {
         status: 429,
         message: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi nanti.',
@@ -111,19 +111,19 @@ const throttle = (delay) => {
                 message: 'Terlalu banyak permintaan dalam waktu singkat. Silakan coba lagi.',
             });
         }
-        requestTimes[clientIp] = now; // Perbarui waktu terakhir untuk IP ini
+        requestTimes[clientIp] = now;
         next();
     };
 };
 
 // Middleware untuk pembatasan per IP
-const ipThrottle = throttle(600); // Batasan per IP (600ms antar permintaan)
+const ipThrottle = throttle(200); // Reduced from 600ms to 200ms
 
 // **3. Pembatasan user**
-const userThrottle = throttle(100); // Batasan lebih longgar untuk produk
+const userThrottle = throttle(100);
 const userLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 menit
-    max: 2000, // Maksimal 2000 permintaan per IP dalam 15 menit
+    max: 3000, // Increased from 2000 to 3000
     message: {
         status: 429,
         message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',

@@ -426,10 +426,17 @@
         .tab-btn {
             padding: 10px 20px;
             border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: #f0f0f0;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 600;
+            cursor: pointer;
+            background-color: #e9ecef;
+            color: #444;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background-color: #dee2e6;
         }
 
         .tab-btn.active {
@@ -447,85 +454,66 @@
 
         .orders-filter {
             margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
         }
 
-        .status-badge.unpaid {
-            background-color: #dc3545;
+        .orders-filter select {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
         }
 
         .status-badge.paid {
             background-color: #28a745;
+            color: white;
+        }
+
+        .status-badge.unpaid {
+            background-color: #dc3545;
+            color: white;
         }
 
         .status-badge.shipping {
             background-color: #ffc107;
-            color: #000;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
+            color: black;
         }
 
         .status-badge.delivered {
             background-color: #28a745;
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-
-        .status-select {
-            padding: 5px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-
-        .status-badge.status-unpaid {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-
-        .status-badge.status-paid {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .edit-status-btn {
-            background-color: #017cff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 4px 8px;
-            cursor: pointer;
-            margin-left: 8px;
-        }
-
-        .edit-status-btn:hover {
-            background-color: #0056b3;
         }
 
         .status-badge.pending {
-            background-color: #f0ad4e;
+            background-color: #dc3545;
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.9em;
         }
 
-        .positive-change {
-            color: #28a745;
-            font-weight: bold;
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .negative-change {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        .status-shipped {
-            background-color: #28a745;
+
+        .action-btn.update-btn {
+            background-color: #017cff;
             color: white;
         }
-        .status-pending {
-            background-color: #ffc107;
-            color: black;
+
+        .action-btn.delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .action-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -726,36 +714,36 @@
 
         <div id="orders-tab" class="tab-content">
             <div class="orders-filter">
-                <label for="order-status-filter">Filter by Status:</label>
                 <select id="order-status-filter">
                     <option value="all">All Orders</option>
-                    <option value="Belum Dikirim">Belum Dikirim</option>
-                    <option value="Sedang Dikirim">Sedang Dikirim</option>
-                    <option value="Sudah Dikirim">Sudah Dikirim</option>
+                    <option value="belum dikirim">Belum Dikirim</option>
+                    <option value="sedang dikirim">Sedang Dikirim</option>
+                    <option value="sudah dikirim">Sudah Dikirim</option>
                 </select>
-                <label for="payment-filter">Filter by Payment:</label>
                 <select id="payment-filter">
                     <option value="all">All Payments</option>
                     <option value="paid">Paid</option>
                     <option value="unpaid">Unpaid</option>
                 </select>
             </div>
-            <div class="orders-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Date</th>
-                            <th>Total</th>
-                            <th>Payment</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orders-body"></tbody>
-                </table>
-            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-body">
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Loading orders...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -1189,6 +1177,185 @@
                 alert('Error adding product: ' + error.message);
             }
         });
+
+        // Tab switching functionality
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                document.getElementById(`${button.dataset.tab}-tab`).classList.add('active');
+
+                // Load orders if orders tab is selected
+                if (button.dataset.tab === 'orders') {
+                    loadOrders();
+                }
+            });
+        });
+
+        // Load orders function
+        const loadOrders = async () => {
+            try {
+                // Get token from URL or localStorage
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token') || localStorage.getItem('token');
+
+                const statusFilter = document.getElementById('order-status-filter').value;
+                const paymentFilter = document.getElementById('payment-filter').value;
+
+                // Build query parameters
+                const params = new URLSearchParams();
+                if (statusFilter !== 'all') params.append('status', statusFilter);
+                if (paymentFilter !== 'all') params.append('payment', paymentFilter);
+
+                const response = await fetch(`/api/admin/orders?${params.toString()}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'user-id': localStorage.getItem('userId')
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load orders');
+                }
+
+                const data = await response.json();
+                const tbody = document.getElementById('orders-body');
+
+                if (!data.orders || data.orders.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center;">No orders found</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = data.orders.map(order => {
+                    const date = new Date(order.order_date).toLocaleDateString('id-ID', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const paymentClass = order.payment === 'paid' ? 'paid' : 'unpaid';
+                    const statusClass = order.status === 'sudah dikirim' ? 'delivered' : 
+                                      order.status === 'sedang dikirim' ? 'shipping' : 'pending';
+
+                    let actionButton = '';
+                    if (order.payment === 'paid') {
+                        if (order.status === 'belum dikirim') {
+                            actionButton = `
+                                <button class="action-btn update-btn" data-order-id="${order.order_id}">
+                                    Update to Shipping
+                                </button>
+                            `;
+                        } else if (order.status === 'sedang dikirim') {
+                        actionButton = `
+                            <button class="action-btn update-btn" data-order-id="${order.order_id}">
+                                Update to Delivered
+                            </button>
+                        `;
+                        }
+                    } else if (order.payment === 'unpaid') {
+                        actionButton = `
+                            <button class="action-btn delete-btn" data-order-id="${order.order_id}">
+                                Delete
+                            </button>
+                        `;
+                    }
+
+                    return `
+                        <tr>
+                            <td>${order.order_id}</td>
+                            <td>${order.email}</td>
+                            <td>${date}</td>
+                            <td>Rp ${new Intl.NumberFormat('id-ID').format(order.total_price)}</td>
+                            <td><span class="status-badge ${paymentClass}">${order.payment}</span></td>
+                            <td><span class="status-badge ${statusClass}">${order.status}</span></td>
+                            <td>${actionButton}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Add event listeners to action buttons
+                document.querySelectorAll('.update-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        try {
+                            const orderId = button.dataset.orderId;
+                            const currentStatus = button.textContent.trim();
+                            const newStatus = currentStatus === 'Update to Shipping' ? 'sedang dikirim' : 'sudah dikirim';
+                            const response = await fetch(`/api/orders/${orderId}/status`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${token}`,
+                                    'user-id': localStorage.getItem('userId')
+                                },
+                                body: JSON.stringify({ status: newStatus })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Failed to update order status');
+                            }
+
+                            alert('Order status updated successfully');
+                            loadOrders();
+                        } catch (error) {
+                            console.error('Error updating order:', error);
+                            alert('Failed to update order status');
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to delete this unpaid order?')) {
+                            try {
+                                const orderId = button.dataset.orderId;
+                                const response = await fetch(`/api/orders/${orderId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'user-id': localStorage.getItem('userId')
+                                    }
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error('Failed to delete order');
+                                }
+
+                                alert('Order deleted successfully');
+                                loadOrders();
+                            } catch (error) {
+                                console.error('Error deleting order:', error);
+                                alert('Failed to delete order');
+                            }
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                const tbody = document.getElementById('orders-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center;">Error loading orders</td>
+                    </tr>
+                `;
+            }
+        };
+
+        // Add filter change event listeners
+        document.getElementById('order-status-filter')?.addEventListener('change', loadOrders);
+        document.getElementById('payment-filter')?.addEventListener('change', loadOrders);
     </script>
 </body>
 </html>

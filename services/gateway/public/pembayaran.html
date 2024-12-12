@@ -300,6 +300,19 @@
         <p>&copy; 2024 SimTech</p>
     </footer>
     <script>
+        // Add debounce function at the top of the script
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const orderId = urlParams.get('order_id');
@@ -309,7 +322,7 @@
             const loginBtn = document.getElementById('login-btn');
             const logoutBtn = document.getElementById('logout-btn');
             const orderBtn = document.getElementById('order-btn');
-            const userId = localStorage.getItem('userId'); // Ambil userId dari localStorage
+            const userId = localStorage.getItem('userId');
             
             if (!userId) {
                 alert('Silakan login terlebih dahulu.');
@@ -323,20 +336,25 @@
                 alert('Nomor pesanan tidak ditemukan.');
                 window.location.href = '/orders';
             }
-            const paymentForm = document.getElementById('payment-form');
-            paymentForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
+
+            // Create debounced payment handler
+            const handlePayment = debounce(async (e) => {
                 const paymentMethod = document.getElementById('payment-method').value;
                 if (!paymentMethod) {
                     alert('Silakan pilih metode pembayaran.');
                     return;
                 }
+
+                const submitButton = e.target.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Memproses...';
+
                 try {
                     const response = await fetch(`/api/payments`, {
                         method: 'POST',
                         headers: { 
                             'Content-Type': 'application/json',
-                            'user-id': localStorage.getItem('userId'), // Tambahkan user-id
+                            'user-id': localStorage.getItem('userId'),
                             'user-email': localStorage.getItem('userEmail'),
                         },
                         body: JSON.stringify({ 
@@ -350,15 +368,24 @@
                         window.location.href = '/orders';
                     } else {
                         alert(`Gagal melakukan pembayaran: ${result.message}`);
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Bayar Sekarang';
                     }
                 } catch (error) {
                     console.error('Error processing payment:', error);
                     alert('Terjadi kesalahan saat memproses pembayaran.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Bayar Sekarang';
                 }
-            });
+            }, 1000); // 1 second debounce
 
-            document.getElementById('cancel-payment-btn').addEventListener('click', async () => {
+            // Create debounced cancel handler
+            const handleCancel = debounce(async () => {
                 if (confirm('Apakah Anda yakin ingin membatalkan pembayaran ini?')) {
+                    const cancelButton = document.getElementById('cancel-payment-btn');
+                    cancelButton.disabled = true;
+                    cancelButton.textContent = 'Membatalkan...';
+
                     try {
                         const response = await fetch(`/api/payments/cancel/${orderId}`, {
                             method: 'POST',
@@ -375,14 +402,25 @@
                             window.location.href = '/orders';
                         } else {
                             alert(`Gagal membatalkan pembayaran: ${result.message}`);
+                            cancelButton.disabled = false;
+                            cancelButton.textContent = 'Batalkan Pembayaran';
                         }
                     } catch (error) {
                         console.error('Error canceling payment:', error);
                         alert('Terjadi kesalahan saat membatalkan pembayaran.');
+                        cancelButton.disabled = false;
+                        cancelButton.textContent = 'Batalkan Pembayaran';
                     }
                 }
+            }, 1000); // 1 second debounce
+
+            const paymentForm = document.getElementById('payment-form');
+            paymentForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                handlePayment(e);
             });
 
+            document.getElementById('cancel-payment-btn').addEventListener('click', handleCancel);
 
             try {
                 // Periksa apakah pengguna telah login
