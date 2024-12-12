@@ -487,6 +487,69 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Add /auth/login endpoint for compatibility with frontend
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        if (rows.length === 0) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        const user = rows[0];
+
+        // Jika password tidak di-hash, langsung bandingkan
+        if (user.password !== password) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+
+        const userData = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            profilePicture: user.profile_picture
+        };
+
+        // Store in LOGIN_GOOGLE array (we'll use this for all auth methods)
+        LOGIN_GOOGLE.push(userData);
+
+        // Store user data in session
+        req.session.user = userData;
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                email: user.email, 
+                role: user.role 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        // Use req.login to set up Passport session
+        req.login(userData, (err) => {
+            if (err) {
+                console.error('Login error:', err);
+                return res.status(500).json({ success: false, message: 'Session initialization failed' });
+            }
+
+            console.log('Session data set and req.user initialized:', req.user);
+            res.json({
+                success: true,
+                message: 'Login successful',
+                user: userData,
+                token: token
+            });
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: 'An error occurred during login' });
+    }
+});
+
 // Check for JWT_SECRET
 if (!process.env.JWT_SECRET) {
     console.error('JWT_SECRET is not set in environment variables');
