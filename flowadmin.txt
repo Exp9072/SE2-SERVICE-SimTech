@@ -1,0 +1,194 @@
+ADMIN INVENTORY MANAGEMENT FLOW
+
+1. ADMIN PAGE ACCESS (inventaris.html)
+--------------------------------
+When accessing /inventaris:
+```javascript
+app.get('/inventaris', (req, res, next) => {
+    req.adminOnly = true;
+    next();
+}, checkAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'inventaris.html'));
+});
+```
+EXPLANATION:
+- When admin tries to access /inventaris page
+- Gateway first checks if user has admin privileges via checkAuth middleware
+- If not admin, redirects to login
+- If admin, serves inventaris.html
+
+2. ADMIN AUTHENTICATION
+----------------------
+Frontend checks admin role:
+```javascript
+// Verify user and role
+const response = await fetch('/auth/user', {
+    headers: {
+        'Authorization': `Bearer ${token}`
+    }
+});
+
+if (!response.ok) {
+    throw new Error('Authentication failed');
+}
+
+const userData = await response.json();
+
+if (!userData.success || !userData.user || userData.user.role !== 'admin') {
+    alert('Access denied. Admin privileges required.');
+    window.location.href = '/';
+    return;
+}
+```
+EXPLANATION:
+- Every time inventaris.html loads
+- Checks JWT token validity
+- Verifies if user has admin role
+- If not admin, redirects to homepage
+- If admin, allows access and stores credentials
+
+3. VIEW PRODUCTS
+---------------
+Endpoint: GET /api/products
+Headers required:
+- Authorization: Bearer token
+- user-id
+
+Used in inventaris.html:
+```javascript
+const loadInventory = async () => {
+    try {
+        const response = await fetch('/api/inventory', { headers });
+        if (!response.ok) {
+            throw new Error('Failed to load inventory');
+        }
+        const inventory = await response.json();
+        displayInventory(inventory);
+    } catch (error) {
+        console.error('Error:', error);
+    }
+};
+```
+EXPLANATION:
+- Fetches all products with their details
+- Only accessible by admin
+- Shows stock levels, prices, and product info
+- Used for inventory management dashboard
+- Automatically refreshes when changes are made
+
+4. UPDATE STOCK
+--------------
+Endpoint: PATCH /api/products/stock
+Headers required:
+- Authorization: Bearer token
+- user-id
+- Content-Type: application/json
+
+Request Body:
+```json
+{
+    "item_name": string,
+    "stock": number
+}
+```
+
+Implementation:
+```javascript
+app.patch('/api/products/stock', authenticateAdmin, async (req, res) => {
+    // ... implementation
+});
+```
+EXPLANATION:
+- Used to update product stock levels
+- Requires admin authentication
+- Validates stock value (must be positive)
+- Updates database
+- Returns success/failure message
+- Triggers inventory stats update
+
+5. UPDATE PRICE
+--------------
+Endpoint: PATCH /api/products/price
+Headers required:
+- Authorization: Bearer token
+- user-id
+- Content-Type: application/json
+
+Request Body:
+```json
+{
+    "item_name": string,
+    "price": number
+}
+```
+
+Implementation:
+```javascript
+app.patch('/api/products/price', authenticateAdmin, async (req, res) => {
+    // ... implementation
+});
+```
+EXPLANATION:
+- Used to update product prices
+- Requires admin authentication
+- Validates price (must be positive)
+- Updates database
+- Returns updated price information
+- Maintains price history
+
+EXPLANATION:
+- Provides overview of inventory status
+- Shows total products count
+- Identifies low stock items (less than 5)
+- Calculates total inventory value
+- Used for quick admin dashboard metrics
+- Real-time calculations
+
+
+EXPLANATION:
+- Records order impacts on inventory
+- Limited to last 50 entries
+- Helps track inventory movements
+- Used for audit purposes
+
+SECURITY FLOW:
+1. Gateway checks admin access
+   - Verifies JWT token
+   - Checks admin role in token
+   - Validates user-id header
+
+2. Each endpoint verifies admin role via authenticateAdmin middleware
+   - Double checks admin status in database
+   - Prevents role spoofing
+   - Ensures continuous validation
+
+3. JWT contains role information
+   - Encrypted role data
+   - Tamper-proof
+   - Time-limited validity
+
+4. All requests require valid JWT and user-id
+   - Multiple layer security
+   - Session validation
+   - Role verification
+
+ERROR HANDLING:
+- 401: Not authenticated
+  - Invalid token
+  - Expired token
+  - Missing token
+
+- 403: Not admin
+  - Valid user but not admin
+  - Insufficient privileges
+  - Role mismatch
+
+- 404: Product not found
+  - Invalid product ID
+  - Deleted product
+  - Wrong item name
+
+- 500: Server error
+  - Database errors
+  - Service unavailable
+  - Internal processing errors
