@@ -1,0 +1,119 @@
+COMPLETE BUYING FLOW
+
+1. ADD TO CART (katalog.html/simulasi.html)
+--------------------------------
+Frontend:
+- Stores cart in localStorage
+```javascript
+addToCart(item_id, productName, productPrice) {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    cart.push({
+        item_id,
+        name: productName,
+        price: productPrice,
+        quantity: 1
+    });
+    localStorage.setItem('cart', JSON.stringify(cart));
+}
+```
+No API endpoint needed - all client-side
+
+2. VIEW CART (cart.html)
+---------------------------
+Frontend:
+- Reads from localStorage
+- Displays cart items
+- Calculates total
+No API endpoint needed - all client-side
+
+3. CHECKOUT (cart.html → order service)
+--------------------------
+Endpoint: POST /api/orders
+Headers required:
+- user-id
+- user-email
+- Content-Type: application/json
+
+Body:
+```json
+{
+    "cart_items": [
+        {
+            "product_id": number,
+            "quantity": number
+        }
+    ]
+}
+```
+
+What happens:
+1. Order service checks stock
+2. Creates order record
+3. Updates inventory
+4. Returns order_id
+
+4. PAYMENT PROCESS (payment.html)
+------------------------------
+Endpoints used:
+
+GET /api/orders/:id
+- Gets order details for payment
+
+POST /api/payments
+Headers required:
+- user-id
+- user-email
+Body:
+```json
+{
+    "order_id": number,
+    "amount": number,
+    "payment_method": string
+}
+```
+
+5. ORDER PROCESSING (Background)
+-----------------------------
+RabbitMQ Messages:
+1. Order → Payment Service
+   - Payment processing request
+
+2. Payment → Order Service
+   - Payment confirmation
+   - Status update
+
+6. KEY ENDPOINTS SUMMARY
+----------------------
+1. Order Creation:
+   POST /api/orders
+   - Creates order from cart
+   - Updates inventory
+   - Returns order_id
+
+2. Order Details:
+   GET /api/orders/:id
+   - Gets specific order
+   - Used in payment page
+
+3. Payment Processing:
+   POST /api/payments
+   - Processes payment
+   - Updates order status
+
+4. Order Status:
+   GET /api/orders/:id/status
+   - Checks order status
+   - Used for confirmation
+
+AUTHENTICATION FLOW:
+- All endpoints require:
+  - user-id header
+  - user-email header
+  - Valid JWT token
+
+DATA FLOW:
+1. Cart data → localStorage
+2. Checkout → Order Service
+3. Order → Payment Service
+4. Payment → Order Update
+5. Order → Inventory Update
