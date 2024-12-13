@@ -1,0 +1,189 @@
+JWT (JSON WEB TOKEN) DETAILED EXPLANATION
+
+1. WHAT IS JWT
+-------------
+JWT is a secure way to transmit information between parties as a JSON object.
+Structure: header.payload.signature
+
+Example from code:
+```javascript
+// services/user/app.js
+const token = jwt.sign(
+    { 
+        id: user.id,       // Payload
+        email: user.email, 
+        role: user.role 
+    }, 
+    process.env.JWT_SECRET, // Secret key
+    { expiresIn: '24h' }   // Options
+);
+```
+
+2. JWT FLOW IN APPLICATION
+-------------------------
+A. Login Process:
+```javascript
+// services/user/app.js
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    // 1. Verify user credentials
+    const user = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    
+    // 2. Create JWT if valid
+    const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+    
+    // 3. Send token to client
+    res.json({ success: true, token, user });
+});
+```
+
+B. Token Storage (Frontend):
+```javascript
+// services/gateway/public/login.html
+localStorage.setItem('token', data.token);
+localStorage.setItem('userId', data.user.id);
+localStorage.setItem('userEmail', data.user.email);
+```
+
+C. Token Usage in Requests:
+```javascript
+// services/gateway/public/inventaris.html
+const headers = {
+    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    'Content-Type': 'application/json'
+};
+
+fetch('/api/inventory', { headers });
+```
+
+3. JWT VERIFICATION
+------------------
+A. Middleware Implementation:
+```javascript
+// services/gateway/app.js
+const authenticateJWT = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader) {
+        const token = authHeader.split(' ')[1]; // Remove 'Bearer '
+        
+        jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+            if (err) {
+                return res.sendStatus(403); // Invalid token
+            }
+            req.user = user; // Attach user to request
+            next();
+        });
+    } else {
+        res.sendStatus(401); // No token
+    }
+};
+```
+
+B. Protected Routes:
+```javascript
+// services/gateway/app.js
+app.use('/api/admin/*', authenticateJWT);
+app.use('/api/inventory/*', authenticateJWT);
+app.use('/api/orders/*', authenticateJWT);
+```
+
+4. JWT STRUCTURE BREAKDOWN
+-------------------------
+A. Header:
+```json
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+```
+
+B. Payload (from your code):
+```json
+{
+  "id": 1,
+  "email": "admin1@simtech.com",
+  "role": "admin",
+  "iat": 1516239022,
+  "exp": 1516325422
+}
+```
+
+C. Signature:
+```javascript
+HMACSHA256(
+    base64UrlEncode(header) + "." +
+    base64UrlEncode(payload),
+    process.env.JWT_SECRET
+)
+```
+
+5. SECURITY MEASURES
+-------------------
+A. Token Expiration:
+```javascript
+jwt.sign(payload, secret, { expiresIn: '24h' });
+```
+
+B. Token Invalidation (Logout):
+```javascript
+// services/gateway/public/login.html
+logoutBtn.addEventListener('click', async () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    window.location.href = '/';
+});
+```
+
+6. ERROR HANDLING
+----------------
+```javascript
+// services/gateway/app.js
+jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired' });
+        }
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(403).json({ message: 'Invalid token' });
+        }
+        return res.status(500).json({ message: 'Internal error' });
+    }
+});
+```
+
+7. ROLE-BASED ACCESS
+-------------------
+```javascript
+// services/gateway/app.js
+const authenticateAdmin = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ message: 'Admin access required' });
+        }
+        next();
+    } catch (error) {
+        res.status(403).json({ message: 'Invalid token' });
+    }
+};
+
+// Protect admin routes
+app.use('/api/admin/*', authenticateAdmin);
+```
+
+8. BEST PRACTICES IMPLEMENTED
+----------------------------
+1. Short expiration time (24h)
+2. Secure secret key storage (environment variables)
+3. HTTPS transmission
+4. Role-based authorization
+5. Token removal on logout
+6. Error handling for different JWT issues
