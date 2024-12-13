@@ -634,6 +634,11 @@ app.use('/api/admin/orders', proxy('http://order-service:3003', {
     }
 }));
 
+// Add these lines to protect more routes
+app.use('/api/orders/*', authenticateJWT);      // Protect order routes
+app.use('/api/payments/*', authenticateJWT);    // Protect payment routes
+app.use('/api/user/*', authenticateJWT);        // Protect user routes
+
 // Create HTTPS server
 const HTTPS_PORT = process.env.HTTPS_PORT || 8443;
 https.createServer(httpsOptions, app)
