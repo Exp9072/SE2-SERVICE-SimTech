@@ -1,0 +1,164 @@
+SIMTECH API DOCUMENTATION
+
+BASE URL: http://localhost:8080
+
+Authorization: Bearer kjsakjhad098dio2hu
+
+1. AUTHENTICATION
+-----------------
+Login (Admin)
+POST /auth/login
+Content-Type: application/json
+Body:
+{
+    "email": "admin1@simtech.com",
+    "password": "admin123"
+}
+Response:
+{
+    "success": true,
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user": {
+        "id": 1,
+        "email": "admin1@simtech.com",
+        "role": "admin"
+    }
+}
+
+2. ADMIN ENDPOINTS
+-----------------
+Note: All admin endpoints require Authorization header:
+Authorization: Bearer <your-jwt-token>
+
+Get All Products
+GET /api/products
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+    "success": true,
+    "products": [
+        {
+            "id": 1,
+            "name": "Product 1",
+            "price": 100000,
+            "stock": 10
+        }
+    ]
+}
+
+Add New Product
+POST /api/products
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+Body:
+{
+    "name": "New Product",
+    "price": 500000,
+    "stock": 5,
+    "description": "Product description"
+}
+
+Update Product
+PUT /api/products/:id
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+Body:
+{
+    "name": "Updated Product",
+    "price": 1000000,
+    "stock": 10
+}
+
+Delete Product
+DELETE /api/products/:id
+Headers:
+- Authorization: Bearer <token>
+
+3. INVENTORY MANAGEMENT
+----------------------
+Get Inventory
+GET /api/inventory
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+    "success": true,
+    "inventory": [
+        {
+            "id": 1,
+            "product_id": 1,
+            "quantity": 10,
+            "last_updated": "2024-01-15T08:00:00Z"
+        }
+    ]
+}
+
+Update Stock
+PUT /api/inventory/:productId
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+Body:
+{
+    "quantity": 15,
+    "action": "add"  // or "subtract"
+}
+
+4. ORDER MANAGEMENT
+------------------
+Get All Orders
+GET /api/orders
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+    "success": true,
+    "orders": [
+        {
+            "id": 1,
+            "user_id": 2,
+            "status": "pending",
+            "total_amount": 1500000,
+            "created_at": "2024-01-15T08:00:00Z"
+        }
+    ]
+}
+
+Update Order Status
+PUT /api/orders/:orderId
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+Body:
+{
+    "status": "completed"  // pending, processing, completed, cancelled
+}
+
+5. POSTMAN SETUP
+---------------
+1. Create new collection "SimTech Admin"
+2. Set up environment variables:
+   - baseUrl: http://localhost:8080
+   - token: <your-jwt-token>
+
+3. Create request folders:
+   - Auth
+   - Products
+   - Inventory
+   - Orders
+
+4. For each request:
+   - URL: {{baseUrl}}/api/...
+   - Headers: 
+     Authorization: Bearer {{token}}
+     Content-Type: application/json
+
+5. Test flow:
+   a. Login to get token
+   b. Set token in environment
+   c. Test other endpoints
+
+Note: Keep token secure and never share in public repositories
