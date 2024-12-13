@@ -47,6 +47,29 @@ EXPLANATION:
 - If not admin, redirects to homepage
 - If admin, allows access and stores credentials
 
+
+The complete flow:
+User logs in:
+Credentials verified
+Role checked in database
+JWT created with role information
+Accessing admin page:
+Gateway checks token
+Verifies admin role
+Serves inventaris.html if admin
+Making admin API calls:
+Frontend includes token
+Gateway verifies token
+Product service double-checks admin status
+Request processed if all checks pass
+4. Multiple security layers:
+JWT validation
+Role verification
+Database double-check
+Per-request validation
+JWT Payload contains:
+
+
 3. VIEW PRODUCTS
 ---------------
 Endpoint: GET /api/products
