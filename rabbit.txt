@@ -1,0 +1,144 @@
+RABBITMQ MESSAGE FLOW DOCUMENTATION
+
+1. ORDER TO PAYMENT FLOW
+------------------------
+When Order is Created:
+- Order service creates new order
+- Sends message to payment queue
+- Continues processing (doesn't wait)
+
+Code Example:
+```javascript
+// order-service
+channel.sendToQueue('payment_queue', 
+    Buffer.from(JSON.stringify({
+        order_id: order.id,
+        amount: order.total,
+        user_id: order.user_id
+    }))
+);
+// Order service continues without waiting
+```
+
+Payment Service:
+- Listens continuously for messages
+- Processes each message as it arrives
+- Sends acknowledgment when done
+
+Code Example:
+```javascript
+// payment-service
+channel.consume('payment_queue', async (msg) => {
+    const order = JSON.parse(msg.content);
+    try {
+        await processPayment(order);
+        channel.ack(msg); // Acknowledge message
+    } catch (error) {
+        channel.nack(msg); // Reject message
+    }
+});
+```
+
+2. MESSAGE FLOW TYPES
+--------------------
+a) Fire and Forget:
+   Order → Payment
+   - Order doesn't wait for response
+   - Payment processes asynchronously
+
+b) Request-Reply:
+   Payment → Order
+   - Payment processes order
+   - Sends result back to order service
+   - Uses correlation IDs
+
+3. QUEUE CONFIGURATIONS
+----------------------
+payment_queue:
+- durable: true (survives broker restart)
+- exclusive: false (multiple consumers allowed)
+- auto-delete: false (queue persists)
+
+order_queue:
+- durable: true
+- exclusive: false
+- auto-delete: false
+
+4. MESSAGE PATTERNS
+------------------
+1. New Order Created:
+   Order Service → payment_queue
+   Content: { order_id, amount, user_id }
+
+2. Payment Processed:
+   Payment Service → order_queue
+   Content: { order_id, status, transaction_id }
+
+3. Stock Update:
+   Order Service → inventory_queue
+   Content: { order_id, items: [{id, quantity}] }
+
+5. ERROR HANDLING
+----------------
+1. Message Failure:
+   - Max retries: 3
+   - Dead letter exchange
+   - Error logging
+
+2. Service Down:
+   - Messages queued
+   - Processed when service returns
+   - No data loss
+
+6. SEQUENCE EXAMPLE
+------------------
+1. Customer places order:
+   ```
+   Order Service:
+   - Creates order in DB
+   - Sends to payment_queue
+   - Returns order confirmation to customer
+   ```
+
+2. Payment processing:
+   ```
+   Payment Service:
+   - Receives message from queue
+   - Processes payment
+   - Sends result to order_queue
+   - Acknowledges original message
+   ```
+
+3. Order update:
+   ```
+   Order Service:
+   - Receives payment result
+   - Updates order status
+   - Sends to inventory_queue if paid
+   ```
+
+7. BENEFITS OF THIS APPROACH
+---------------------------
+1. Decoupling:
+   - Services operate independently
+   - No direct dependencies
+
+2. Reliability:
+   - Messages persist if service down
+   - Guaranteed delivery
+
+3. Scalability:
+   - Services can scale independently
+   - Multiple consumers possible
+
+4. Asynchronous:
+   - Non-blocking operations
+   - Better performance
+
+8. MONITORING
+------------
+- Queue length
+- Message rate
+- Consumer count
+- Error rate
+- Processing time

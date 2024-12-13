@@ -1,0 +1,96 @@
+USER SERVICE ENDPOINT MAPPING
+
+POST /register
+- register.html (new user registration)
+- admin-dashboard.html (admin creating new user)
+
+POST /login
+- login.html (user login)
+- admin-login.html (admin login)
+- gateway-service (authentication verification)
+
+GET /auth/user
+- index.html (check login status)
+- katalog.html (verify user session)
+- cart.html (get user details)
+- orders.html (get user info)
+- payment.html (verify user)
+- simulasi.html (check user session)
+- admin-dashboard.html (verify admin status)
+
+POST /logout
+- All pages with header.html (user logout)
+- admin-dashboard.html (admin logout)
+
+GET /users
+- admin-dashboard.html (view all users)
+- analytics-service (user statistics)
+
+GET /users/:id
+- profile.html (user profile view)
+- admin-dashboard.html (admin viewing user details)
+- order-service (verify user details)
+
+PUT /users/:id
+- profile.html (update user profile)
+- admin-dashboard.html (admin updating user)
+
+DELETE /users/:id
+- admin-dashboard.html (admin deleting user)
+- profile.html (user account deletion)
+
+GET /auth/google
+- login.html (Google OAuth login button)
+- register.html (Google signup option)
+
+GET /auth/google/callback
+- gateway-service (handle Google OAuth response)
+- login.html (receive Google auth result)
+
+GET /auth/github
+- login.html (GitHub OAuth login button)
+- register.html (GitHub signup option)
+
+GET /auth/github/callback
+- gateway-service (handle GitHub OAuth response)
+- login.html (receive GitHub auth result)
+
+EXAMPLE FLOWS:
+
+1. Regular Login Flow:
+login.html → POST /login 
+→ index.html → GET /auth/user
+
+2. OAuth Login Flow:
+login.html → GET /auth/google 
+→ GET /auth/google/callback 
+→ index.html
+
+3. Profile Management Flow:
+profile.html → GET /users/:id 
+→ PUT /users/:id
+
+4. Admin User Management Flow:
+admin-dashboard.html → GET /users 
+→ GET /users/:id 
+→ PUT/DELETE /users/:id
+
+AUTHENTICATION CONTEXTS:
+
+1. JWT Generation:
+- POST /login
+- GET /auth/google/callback
+- GET /auth/github/callback
+
+2. JWT Verification:
+- GET /auth/user
+- GET /users
+- GET /users/:id
+- PUT /users/:id
+- DELETE /users/:id
+
+3. Public Endpoints (No Auth Required):
+- POST /register
+- POST /login
+- GET /auth/google
+- GET /auth/github
