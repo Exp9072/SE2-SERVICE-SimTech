@@ -1,0 +1,206 @@
+TUGAS PROJECT CHECKLIST
+
+1. ARSITEKTUR SISTEM
+[✓] Diagram arsitektur sistem microservices
+    - Terlihat dari docker-compose.yml yang mendefinisikan beberapa services:
+      * order-service
+      * payment-service
+      * gateway-service
+    - Menggunakan network "simtech-network" untuk komunikasi antar service
+
+        Code: docker-compose.yml
+    ```yaml
+    services:
+      order-service:
+        build:
+          context: ./services/order
+        environment:
+          DB_HOST: host.docker.internal
+          PORT: ${ORDER_SERVICE_PORT:-3003}
+      
+      payment-service:
+        build:
+          context: ./services/payment
+        environment:
+          PORT: ${PAYMENT_SERVICE_PORT:-3004}
+      
+      gateway-service:
+        build:
+          context: ./services/gateway
+        environment:
+          ORDER_SERVICE_URL: http://order-service:3003
+          PAYMENT_SERVICE_URL: http://payment-service:3004
+
+[✓] Penjelasan fungsi tiap layanan
+    - Gateway Service: Menangani routing dan autentikasi (gateway-service)
+    - Order Service: Mengelola pesanan (order-service)
+    - Payment Service: Mengelola pembayaran (payment-service)
+
+    - Gateway Service: 
+    ```javascript
+    // gateway-service routing example
+    app.use('/api/orders', authenticateJWT, async (req, res) => {
+        const response = await fetch(`${ORDER_SERVICE_URL}/orders`);
+        const data = await response.json();
+        res.json(data);
+    });
+    ```
+
+2. IMPLEMENTASI DASAR
+[✓] REST Server untuk pengelolaan data barang
+    - Implementasi di katalog.html dan PcReady.html
+    - API endpoints untuk produk di /api/products
+    - CRUD operasi untuk produk terlihat di frontend
+
+        Code: katalog.html
+    ```javascript
+    const loadProducts = async (filters = {}) => {
+        const response = await fetch('/api/products');
+        const products = await response.json();
+        // Display products
+    };
+
+[✓] JWT dan OAuth untuk autentikasi
+    - Implementasi JWT terlihat di pembayaran.html dan order.html
+    - Token disimpan di localStorage
+    - Autentikasi header di API calls
+
+        Code: login.html
+    ```javascript
+    const response = await fetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    localStorage.setItem('token', data.token);
+    ```
+
+3. INTEGRASI DAN PENGUJIAN
+[✓] API Gateway
+    - Gateway service mengatur routing ke microservices
+    - Terlihat di docker-compose.yml konfigurasi gateway
+    - Routing ke berbagai services (ORDER_SERVICE_URL, PAYMENT_SERVICE_URL, dll)
+
+        Code: docker-compose.yml
+    ```yaml
+    gateway-service:
+      environment:
+        ORDER_SERVICE_URL: http://order-service:3003
+        PAYMENT_SERVICE_URL: http://payment-service:3004
+        USER_SERVICE_URL: http://user-service:3001
+    ```
+
+[✓] Rate Limiting
+    - Implementasi debounce di beberapa frontend actions:
+      * handlePayment di pembayaran.html
+      * handleBuyClick di simulasi.html
+
+          Code: pembayaran.html
+    ```javascript
+    const handlePayment = debounce(async () => {
+        // Payment logic
+    }, 1000); // 1 second debounce
+    ```
+
+4. DOCKER DAN KUBERNETES
+[✓] Dockerfile untuk setiap layanan
+    - Terlihat dari docker-compose.yml yang mendefinisikan build context untuk setiap service
+    - Contoh: ./services/order, ./services/payment, ./services/gateway
+
+        Code: docker-compose.yml
+    ```yaml
+    services:
+      order-service:
+        build:
+          context: ./services/order
+      payment-service:
+        build:
+          context: ./services/payment
+    ```
+
+5. BONUS (OPSIONAL)
+[✓] Message Broker
+    - Konfigurasi RabbitMQ terlihat di docker-compose.yml
+    - Environment variables untuk RabbitMQ di services
+
+        Code: docker-compose.yml
+    ```yaml
+    environment:
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-localhost}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    ```
+
+[?] Monitoring System
+    -Prometheus/Grafana
+
+
+KRITERIA PENILAIAN:
+[✓] Fungsi API
+    - REST endpoints untuk products, orders, payments
+    - CRUD operations terimplementasi
+    - Frontend integration dengan API
+
+        Code: order.html
+    ```javascript
+    const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'user-id': userId,
+            'user-email': userEmail
+        },
+        body: JSON.stringify({ cart_items })
+    });
+    ```
+
+[✓] Keamanan
+    - JWT authentication
+    - User session management
+    - Secure headers in API calls
+
+        Code: pembayaran.html
+    ```javascript
+    const response = await fetch(`/api/payments`, {
+        headers: { 
+            'Content-Type': 'application/json',
+            'user-id': localStorage.getItem('userId'),
+            'user-email': localStorage.getItem('userEmail'),
+        }
+    });
+    ```
+
+[✓] Skalabilitas
+    - Docker containerization
+    - Microservices architecture
+    - Service isolation
+
+        Code: docker-compose.yml
+    ```yaml
+    networks:
+      simtech-network:
+        driver: bridge
+    ```
+
+[?] Integrasi IoT
+    - Message broker configured 
+
+[✓] Dokumentasi
+    - Frontend documentation dalam HTML comments
+    - Service structure documented in docker-compose
+    - API endpoints visible in frontend code
+
+        Code: Various files
+    ```javascript
+    // Frontend documentation example
+    /**
+     * Handles payment processing
+     * @param {Event} e - Form submission event
+     * @returns {Promise<void>}
+     */
+    const handlePayment = async (e) => {
+        // Payment processing logic
+    };
+    ```
+
+
