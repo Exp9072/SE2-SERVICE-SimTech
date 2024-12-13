@@ -290,8 +290,8 @@ app.use('/auth/google/callback', proxy('https://cef1-139-194-77-206.ngrok-free.a
 }));
 
 // Proxy untuk GitHub OAuth
-app.use('/auth/github', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github',
+app.use('/auth/github', proxy('https://5081-182-3-43-40.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://5081-182-3-43-40.ngrok-free.app/auth/github',
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -302,8 +302,8 @@ app.use('/auth/github', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
     },
 }));
 
-app.use('/auth/github/callback', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://83f7-182-2-166-159.ngrok-free.app/auth/github/callback',
+app.use('/auth/github/callback', proxy('https://5081-182-3-43-40.ngrok-free.app', {
+    proxyReqPathResolver: () => 'https://5081-182-3-43-40.ngrok-free.app/auth/github/callback',
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -643,7 +643,7 @@ app.use('/api/user/*', authenticateJWT);        // Protect user routes
 const HTTPS_PORT = process.env.HTTPS_PORT || 8443;
 https.createServer(httpsOptions, app)
     .listen(HTTPS_PORT, '0.0.0.0', () => {
-        console.log(`Gateway running on https://192.168.0.5:${HTTPS_PORT}`);
+        console.log(`Gateway running on https://192.168.43.61:${HTTPS_PORT}`);
     });
 
 // Optional: Redirect HTTP to HTTPS
@@ -651,7 +651,7 @@ const http = require('http');
 const HTTP_PORT = process.env.HTTP_PORT || 8080;
 http.createServer((req, res) => {
     res.writeHead(301, { 
-        "Location": "https://192.168.0.5:8443" + req.url 
+        "Location": "https://192.168.43.61:8443" + req.url 
     });
     res.end();
 }).listen(HTTP_PORT, '0.0.0.0');

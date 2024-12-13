@@ -284,8 +284,8 @@ app.get(
             
             // Redirect based on role
             const redirectUrl = userData.role === 'admin' 
-                ? `http://192.168.0.5:8080/inventaris?token=${token}`
-                : `http://192.168.0.5:8080?token=${token}`;
+                ? `http://192.168.43.61:8080/inventaris?token=${token}`
+                : `http://192.168.43.61:8080?token=${token}`;
             res.redirect(redirectUrl);
         } catch (error) {
             console.error('OAuth callback error:', error);
@@ -305,7 +305,7 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] 
 // GitHub OAuth Callback Endpoint
 app.get('/auth/github/callback',
     passport.authenticate('github', {
-        failureRedirect: 'https://83f7-182-2-166-159.ngrok-free.app/login',
+        failureRedirect: 'https://5081-182-3-43-40.ngrok-free.app/login',
         failureMessage: true,
         session: true
     }),
@@ -319,7 +319,7 @@ app.get('/auth/github/callback',
             
             if (!req.user) {
                 console.log('No user found in request');
-                return res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
+                return res.redirect('https://5081-182-3-43-40.ngrok-free.app/login?error=auth_failed');
             }
 
             const userData = {
@@ -351,12 +351,12 @@ app.get('/auth/github/callback',
             
             // Redirect based on role
             const redirectUrl = userData.role === 'admin' 
-                ? `http://192.168.0.5:8080/inventaris?token=${token}`
-                : `http://192.168.0.5:8080?token=${token}`;
+                ? `http://192.168.43.61:8080/inventaris?token=${token}`
+                : `http://192.168.43.61:8080?token=${token}`;
             res.redirect(redirectUrl);
         } catch (error) {
             console.error('GitHub callback error:', error);
-            res.redirect('https://83f7-182-2-166-159.ngrok-free.app/login?error=auth_failed');
+            res.redirect('https://5081-182-3-43-40.ngrok-free.app/login?error=auth_failed');
         }
     }
 );

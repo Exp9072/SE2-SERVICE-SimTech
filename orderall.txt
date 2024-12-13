@@ -1,0 +1,194 @@
+ORDER SERVICE ENDPOINTS DOCUMENTATION
+
+1. GET /orders
+Description: Get all orders or filtered by user_id
+Used by: 
+- Admin dashboard to view all orders
+- User profile to view their own orders
+Parameters:
+- user_id (query): Optional, filters orders for specific user
+Headers required:
+- user-id: User's ID
+- user-email: User's email
+Example:
+GET http://localhost:3003/orders?user_id=123
+
+2. GET /orders/:id
+Description: Get specific order details by order ID
+Used by:
+- Order detail page
+- Payment confirmation page
+- Admin order management
+Parameters:
+- id (path): Order ID
+Example:
+GET http://localhost:3003/orders/456
+
+3. POST /orders
+Description: Create new order
+Used by:
+- Cart checkout process
+- Quick buy functionality
+Required body:
+{
+    "user_id": number,
+    "cart_items": [
+        {
+            "item_id": number,
+            "quantity": number,
+            "price": number
+        }
+    ]
+}
+Example:
+POST http://localhost:3003/orders
+{
+    "user_id": 123,
+    "cart_items": [
+        {
+            "item_id": 1,
+            "quantity": 2,
+            "price": 100000
+        }
+    ]
+}
+
+4. PUT /orders/:id/status
+Description: Update order status
+Used by:
+- Admin to manage order status
+- Payment service to update after payment
+- Inventory service for stock updates
+Parameters:
+- id (path): Order ID
+Required body:
+{
+    "status": "pending" | "processing" | "completed" | "cancelled"
+}
+Example:
+PUT http://localhost:3003/orders/456/status
+{
+    "status": "completed"
+}
+
+5. DELETE /orders/:id
+Description: Cancel/delete order
+Used by:
+- Admin for order management
+- Users cancelling unpaid orders
+Parameters:
+- id (path): Order ID
+Example:
+DELETE http://localhost:3003/orders/456
+
+6. GET /orders/stats
+Description: Get order statistics
+Used by:
+- Admin dashboard
+- Analytics reporting
+Returns:
+{
+    "total_orders": number,
+    "pending_orders": number,
+    "completed_orders": number,
+    "total_revenue": number
+}
+Example:
+GET http://localhost:3003/orders/stats
+
+USAGE CONTEXTS:
+
+1. Frontend Pages:
+- orders.html: Uses GET /orders for order listing
+- payment.html: Uses GET /orders/:id for order details
+- cart.html: Uses POST /orders for checkout
+- admin-dashboard.html: Uses multiple endpoints for management
+
+2. Other Services:
+- Payment Service: Updates order status after payment
+- Inventory Service: Checks order details for stock
+- Gateway Service: Routes all order requests
+
+3. Authentication:
+- All endpoints require valid JWT through gateway
+- Some endpoints (like GET /orders/stats) require admin role
+- User-specific endpoints verify user_id matches token
+
+4. Database Interactions:
+- Creates records in orders table
+- Updates order_items table
+- Maintains order_status history
+- Tracks inventory changes
+
+5. Error Handling:
+- 400: Bad Request (invalid input)
+- 401: Unauthorized (no token)
+- 403: Forbidden (wrong user/role)
+- 404: Order not found
+- 500: Server error
+
+6. Business Rules:
+- Orders can't be modified after payment
+- Stock is checked before order creation
+- Only admin can view all orders
+- Users can only view their own orders
+- Status changes trigger notifications
+
+INTEGRATION POINTS:
+- Frontend → Gateway → Order Service
+- Payment Service → Order Service
+- Inventory Service → Order Service
+- Analytics Service ← Order Service
+
+This documentation covers all endpoints, their usage contexts, and integration points in the order microservice.
+
+ENDPOINT TO PAGE/SERVICE MAPPING
+
+GET /orders
+- orders.html (displays user's order history)
+- admin-dashboard.html (displays all orders)
+- user-profile.html (shows user's orders)
+
+GET /orders/:id
+- payment.html (shows order details during payment)
+- order-detail.html (displays single order details)
+- admin-order-detail.html (admin view of order)
+- payment-service (verifies order before processing)
+
+POST /orders
+- cart.html (creates order during checkout)
+- simulasi.html (creates order from PC simulation)
+- katalog.html (quick buy feature)
+
+PUT /orders/:id/status
+- admin-dashboard.html (admin updating order status)
+- payment-service (updates status after payment)
+- inventory-service (updates after stock check)
+
+DELETE /orders/:id
+- orders.html (user cancelling order)
+- admin-dashboard.html (admin cancelling order)
+
+GET /orders/stats
+- admin-dashboard.html (shows order statistics)
+- analytics-service (collects data for reports)
+
+EXAMPLE FLOWS:
+
+1. Checkout Flow:
+cart.html → POST /orders 
+→ payment.html → GET /orders/:id 
+→ payment-service → PUT /orders/:id/status
+
+2. Admin Management Flow:
+admin-dashboard.html → GET /orders 
+→ admin-order-detail.html → GET /orders/:id 
+→ PUT /orders/:id/status
+
+3. User History Flow:
+orders.html → GET /orders?user_id=123 
+→ order-detail.html → GET /orders/:id
+
+4. Analytics Flow:
+admin-dashboard.html → GET /orders/stats 
+→ analytics-service → GET /orders
