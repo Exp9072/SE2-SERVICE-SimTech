@@ -706,6 +706,13 @@
             } catch (err) {
                 console.error('Error checking login status:', err);
             }
+
+            // Redirect based on role with token
+            if (data.user.role === 'admin') {
+                window.location.href = `${config.FRONTEND_URL}/inventaris?token=${data.token}`;
+            } else {
+                window.location.href = `${config.FRONTEND_URL}/?token=${data.token}`;
+            }
         });
     </script>
 </body>

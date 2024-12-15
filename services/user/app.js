@@ -282,10 +282,10 @@ app.get(
             console.log('Session after Google Login:', req.session);
             console.log('LOGIN_GOOGLE:', LOGIN_GOOGLE);
             
-            // Redirect based on role
+            // Redirect based on role using environment variables
             const redirectUrl = userData.role === 'admin' 
-                ? `http://192.168.43.61:8080/inventaris?token=${token}`
-                : `http://192.168.43.61:8080?token=${token}`;
+                ? `${process.env.FRONTEND_URL}/inventaris?token=${token}`
+                : `${process.env.FRONTEND_URL}?token=${token}`;
             res.redirect(redirectUrl);
         } catch (error) {
             console.error('OAuth callback error:', error);
@@ -305,7 +305,7 @@ app.get('/auth/github', passport.authenticate('github', { scope: ['user:email'] 
 // GitHub OAuth Callback Endpoint
 app.get('/auth/github/callback',
     passport.authenticate('github', {
-        failureRedirect: 'https://5081-182-3-43-40.ngrok-free.app/login',
+        failureRedirect: `${process.env.NGROK_URL}/login`,
         failureMessage: true,
         session: true
     }),
@@ -349,14 +349,14 @@ app.get('/auth/github/callback',
 
             console.log('Session saved with user:', req.session.user);
             
-            // Redirect based on role
+            // Redirect based on role using environment variables
             const redirectUrl = userData.role === 'admin' 
-                ? `http://192.168.43.61:8080/inventaris?token=${token}`
-                : `http://192.168.43.61:8080?token=${token}`;
+                ? `${process.env.FRONTEND_URL}/inventaris?token=${token}`
+                : `${process.env.FRONTEND_URL}?token=${token}`;
             res.redirect(redirectUrl);
         } catch (error) {
             console.error('GitHub callback error:', error);
-            res.redirect('https://5081-182-3-43-40.ngrok-free.app/login?error=auth_failed');
+            res.redirect(`${process.env.NGROK_URL}/login?error=auth_failed`);
         }
     }
 );

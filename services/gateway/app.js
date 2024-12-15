@@ -261,7 +261,7 @@ app.use('/register', proxy('http://user-service:3001', {
 
 // Proxy untuk Google OAuth
 app.use('/auth/google', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/google',
+    proxyReqPathResolver: () => `${process.env.NGROK_URL}/auth/google`,
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -273,7 +273,7 @@ app.use('/auth/google', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
 }));
 
 app.use('/auth/google/callback', proxy('https://cef1-139-194-77-206.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://cef1-139-194-77-206.ngrok-free.app/auth/google/callback',
+    proxyReqPathResolver: () => `${process.env.NGROK_URL}/auth/google/callback`,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -291,7 +291,7 @@ app.use('/auth/google/callback', proxy('https://cef1-139-194-77-206.ngrok-free.a
 
 // Proxy untuk GitHub OAuth
 app.use('/auth/github', proxy('https://5081-182-3-43-40.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://5081-182-3-43-40.ngrok-free.app/auth/github',
+    proxyReqPathResolver: () => `${process.env.NGROK_URL}/auth/github`,
     https: true,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
@@ -303,7 +303,7 @@ app.use('/auth/github', proxy('https://5081-182-3-43-40.ngrok-free.app', {
 }));
 
 app.use('/auth/github/callback', proxy('https://5081-182-3-43-40.ngrok-free.app', {
-    proxyReqPathResolver: () => 'https://5081-182-3-43-40.ngrok-free.app/auth/github/callback',
+    proxyReqPathResolver: () => `${process.env.NGROK_URL}/auth/github/callback`,
     userResDecorator: (proxyRes, proxyResData, req, res) => {
         const setCookie = proxyRes.headers['set-cookie'];
         if (setCookie) {
@@ -643,15 +643,30 @@ app.use('/api/user/*', authenticateJWT);        // Protect user routes
 const HTTPS_PORT = process.env.HTTPS_PORT || 8443;
 https.createServer(httpsOptions, app)
     .listen(HTTPS_PORT, '0.0.0.0', () => {
-        console.log(`Gateway running on https://192.168.43.61:${HTTPS_PORT}`);
+        console.log(`Gateway running on https://${process.env.APP_IP}:${HTTPS_PORT}`);
     });
 
 // Optional: Redirect HTTP to HTTPS
 const http = require('http');
 const HTTP_PORT = process.env.HTTP_PORT || 8080;
 http.createServer((req, res) => {
+    const appIP = process.env.APP_IP || req.headers.host.split(':')[0];
+    const httpsPort = process.env.HTTPS_PORT || 8443;
     res.writeHead(301, { 
-        "Location": "https://192.168.43.61:8443" + req.url 
+        "Location": `https://${appIP}:${httpsPort}${req.url}`
     });
     res.end();
-}).listen(HTTP_PORT, '0.0.0.0');
+}).listen(HTTP_PORT, '0.0.0.0', () => {
+    console.log(`HTTP redirect server running on port ${HTTP_PORT}`);
+    console.log(`Redirecting to https://${process.env.APP_IP}:${process.env.HTTPS_PORT}`);
+});
+
+// Add this endpoint to serve configuration to frontend
+app.get('/config', (req, res) => {
+    res.json({
+        APP_IP: process.env.APP_IP,
+        APP_PORT: process.env.APP_PORT,
+        NGROK_URL: process.env.NGROK_URL,
+        FRONTEND_URL: process.env.FRONTEND_URL
+    });
+});
